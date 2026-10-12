@@ -314,7 +314,7 @@ class MediaManager extends EventEmitter {
         .finally(() => {
           this.running--;
           this.jobs.delete(id);
-          if (it.status === 'queued' && this.items.has(id)) this.queue.push(id); // 메타정보 단계 후 재대기
+          if (!ac.signal.aborted && it.status === 'queued' && this.items.has(id)) this.queue.push(id); // 메타정보 단계 후 재대기
           this._pump();
         });
     }
@@ -546,6 +546,33 @@ class MediaManager extends EventEmitter {
   clearCache() {
     const used = new Set([...this.items.values()].map((i) => i.localPath).filter(Boolean));
     for (const f of listDir(this.cacheDir)) if (!used.has(f)) fs.rm(f, { force: true }, () => {});
+  }
+  // 서버를 끌 때: 진행 중인 준비 작업을 멈추고 캐시 폴더의 영상을 모두 지운다 (내가 추가한 원본 파일은 캐시 폴더 밖이라 그대로).
+  // 캐시 영상을 쓰던 항목은 '대기'로 돌려 두고, 서버를 다시 열 때 requeue()로 다시 준비한다.
+  purgeCache() {
+    for (const ac of this.jobs.values()) ac.abort();
+    const root = path.resolve(this.cacheDir) + path.sep;
+    for (const it of this.items.values()) {
+      const inCache = it.cached && it.localPath && path.resolve(it.localPath).startsWith(root);
+      if (inCache) { it.localPath = null; it.cached = false; }
+      if (inCache || !['ready', 'error', 'queued'].includes(it.status)) Object.assign(it, { status: 'queued', progress: 0, statusText: '' });
+    }
+    this.queue = [];
+    let files = 0, bytes = 0;
+    const busy = [];
+    for (const f of listDir(this.cacheDir)) {
+      let size = 0;
+      try { size = fs.statSync(f).size; } catch {}
+      try { fs.rmSync(f, { force: true }); files++; bytes += size; } catch { busy.push(f); }
+    }
+    // 방금 멈춘 작업이 아직 쥐고 있던 파일은 잠시 뒤 다시 지운다
+    if (busy.length) setTimeout(() => { for (const f of busy) fs.rm(f, { force: true }, () => {}); }, 3000);
+    this._emit();
+    return { files, bytes };
+  }
+  // 서버를 열 때: 대기 중인 항목을 다시 준비 큐에 넣는다
+  requeue() {
+    for (const it of this.items.values()) if (it.status === 'queued') this._enqueue(it.id);
   }
 }
 

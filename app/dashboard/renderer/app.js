@@ -364,6 +364,7 @@ function renderSettings() {
   $('cfgHeight').value = String(c.media.maxHeight);
   $('cfgYtSubs').checked = c.media.ytSubs !== false;
   $('cfgPrefetch').value = c.media.prefetch ?? 3;
+  $('cfgKeepCache').checked = !!c.media.keepCache;
   $('cfgNames').value = c.names.join(', ');
   $('cfgCustom').checked = c.customModels?.enabled !== false;
   $('cfgCustomMB').value = c.customModels?.maxMB ?? 60;
@@ -386,7 +387,7 @@ $('cfgSave').onclick = async () => {
     serverName: $('cfgName').value.trim() || '사이버 홍대입구', maxUsers: Math.max(1, +$('cfgMax').value || 150),
     names: names.length ? names : S.config.names, stickColors: sticks,
     customModels: { enabled: $('cfgCustom').checked, maxMB: Math.min(500, Math.max(1, +$('cfgCustomMB').value || 60)) },
-    media: { maxHeight: +$('cfgHeight').value, ytSubs: $('cfgYtSubs').checked, prefetch: Math.max(0, +$('cfgPrefetch').value || 0) },
+    media: { maxHeight: +$('cfgHeight').value, ytSubs: $('cfgYtSubs').checked, prefetch: Math.max(0, +$('cfgPrefetch').value || 0), keepCache: $('cfgKeepCache').checked },
   });
   toast('✅ 설정을 저장했습니다');
 };

@@ -34,7 +34,7 @@ const DEFAULT_CONFIG = {
   chat: { slowMode: 0, maxLen: 200, enabled: true },
   customModels: { enabled: true, maxMB: 60 },
   autoUpdate: true,
-  media: { maxHeight: 1080, ytSubs: true, subLangs: 'ko.*,ko,en.*,en,ja', prefetch: 3 },
+  media: { maxHeight: 1080, ytSubs: true, subLangs: 'ko.*,ko,en.*,en,ja', prefetch: 3, keepCache: false },
   sign4: {
     hall: '4관', floor: '10층', autoTitle: true, title: '', message: '관람고객님은 지금 입장하시기 바랍니다.',
     messageEn: 'Please enter the Screen 4', showClock: true, bg: 'default', color: '#ffffff',
@@ -306,6 +306,7 @@ class CinemaServer extends EventEmitter {
     this._tick = setInterval(() => this._flushPositions(), 100);
     this._syncT = setInterval(() => { if (this.playback.playing) this.broadcast({ t: 'pbs', pos: this.playback.position(), serverTime: Date.now(), itemId: this.playback.itemId }); }, 5000);
     this.log(`서버 시작: 포트 ${port}`);
+    this.media.requeue();   // 지난번 서버를 끌 때 캐시를 지웠으면 다시 준비
     this.publicUrl = null;
     try {
       if (exposure === 'tunnel') {
@@ -347,6 +348,11 @@ class CinemaServer extends EventEmitter {
     this._setStatus('stopped');
     this.emit('users', []);
     this.log('서버 종료');
+    // 기본: 서버를 끄면 내려받은·변환한 영상 캐시를 지움 (설정 '서버를 꺼도 영상 캐시 남기기'로 끌 수 있음)
+    if (!this.config.media.keepCache) {
+      const r = this.media.purgeCache();
+      if (r.files) this.log(`영상 캐시 ${r.files}개(${(r.bytes / 1048576).toFixed(0)}MB)를 지웠습니다. 남기려면 설정에서 '서버를 꺼도 영상 캐시 남기기'를 켜세요`);
+    }
   }
 
   urls() {

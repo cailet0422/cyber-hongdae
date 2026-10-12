@@ -61,7 +61,7 @@ Notes:
 
 - No admin rights are required; the app installs into your user folder.
 - Settings and the playlist are stored in `%APPDATA%\cyber-hongdae\data`.
-- Downloaded/converted movie files (the cache) go to a `…\CyberHongdae-cache` folder **next to the install folder** (same drive), not the C: user folder. Open it with **📂 캐시 폴더** on the media tab. Uninstalling the app deletes it (updates keep it).
+- Downloaded/converted movie files (the cache) go to a `…\CyberHongdae-cache` folder **next to the install folder** (same drive), not the C: user folder. Open it with **📂 캐시 폴더** on the media tab. **By default the cache is deleted when you stop the server** and re-downloaded/converted the next time you start the app or open the server; to keep it, turn on **Settings → 서버를 꺼도 영상 캐시 남기기** (*keep the movie cache when the server stops*). Uninstalling the app deletes it (updates keep it).
 - To uninstall, use **Settings → Apps**.
 - **Auto-update**: the app checks GitHub Releases on startup and every 6 hours, downloads new versions in the background, and installs them when you close it. To install right away, use the **지금 재시작하고 업데이트** (*restart and update now*) button. To turn this off or check manually, go to **Settings → 프로그램 업데이트** (*program update*).
 
