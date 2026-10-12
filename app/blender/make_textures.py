@@ -295,6 +295,101 @@ def down_sign():
     save(img, "sign_down.png")
 
 
+def _center_text(d, cx, y, text, f, fill):
+    bb = d.textbbox((0, 0), text, font=f)
+    d.text((cx - (bb[2] - bb[0]) / 2 - bb[0], y - bb[1]), text, font=f, fill=fill)
+
+
+def _popcorn(d, cx, top, s):
+    # 빨강/흰 줄무늬 팝콘 통
+    w0, w1, h = s * 0.8, s * 0.55, s * 0.9
+    for k in range(5):
+        x0 = cx - w0 / 2 + k * w0 / 5
+        x1 = cx - w1 / 2 + k * w1 / 5
+        d.polygon([(x0, top + s * 0.3), (x0 + w0 / 5, top + s * 0.3), (x1 + w1 / 5, top + s * 0.3 + h), (x1, top + s * 0.3 + h)],
+                  fill=(225, 35, 45) if k % 2 == 0 else (250, 250, 250))
+    for k in range(7):
+        d.ellipse([cx - w0 / 2 + k * w0 / 7 - 6, top + s * 0.1 + (k % 2) * 12, cx - w0 / 2 + (k + 1) * w0 / 7 + 10, top + s * 0.38], fill=(255, 236, 170))
+
+
+def kiosk_atlas():
+    # 박스오피스 구역 기기 정면 4종: 티켓·콤보 키오스크 / 핑크 키오스크 / 인형뽑기 안쪽 / ATM
+    W, H = 2048, 1024
+    img = Image.new("RGB", (W, H), (0, 0, 0))
+    d = ImageDraw.Draw(img)
+    rr = random.Random(7)
+    pink = (238, 70, 120)
+    for c, body in ((0, (14, 14, 16)), (1, (245, 205, 220))):
+        x = c * 512
+        d.rectangle([x, 0, x + 511, H], fill=body)
+        d.rectangle([x + 20, 18, x + 491, 78], fill=pink)
+        _center_text(d, x + 256, 30, "티켓, 콤보 구입(카드전용)", font("malgunbd.ttf", 30), (255, 255, 255))
+        # 화면 (상영작 광고)
+        d.rectangle([x + 40, 100, x + 471, 470], fill=(20, 26, 60))
+        for k in range(14):
+            cx, cy, r = x + rr.randint(60, 450), rr.randint(120, 450), rr.randint(20, 70)
+            d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=rr.choice([(240, 120, 60), (90, 160, 255), (250, 210, 80), (200, 80, 200)]))
+        d.rectangle([x + 40, 380, x + 471, 470], fill=(10, 12, 30))
+        _center_text(d, x + 256, 395, "NOW SHOWING", font("arialbd.ttf", 46), (255, 255, 255))
+        # 카드 리더 / 영수증
+        d.rectangle([x + 330, 500, x + 440, 600], fill=(60, 60, 64))
+        d.rectangle([x + 70, 530, x + 260, 548], fill=(40, 40, 44))
+        # 하단 '바로픽업' 패널
+        d.rectangle([x + 40, 640, x + 471, 1000], fill=(10, 10, 12), outline=(80, 80, 84), width=3)
+        _center_text(d, x + 256, 665, "이제 매점도", font("malgunbd.ttf", 44), (255, 255, 255))
+        _center_text(d, x + 256, 728, "바로픽업", font("malgunbd.ttf", 80), (255, 170, 60))
+        _popcorn(d, x + 256, 820, 110)
+        _center_text(d, x + 256, 955, "주문 후 교환권으로 SWEET#에서 픽업", font("malgun.ttf", 22), (230, 230, 230))
+    # 인형뽑기 안쪽 (인형 더미)
+    x = 1024
+    d.rectangle([x, 0, x + 511, H], fill=(250, 220, 236))
+    for k in range(60):
+        cx, cy, r = x + rr.randint(30, 480), rr.randint(560, 1000), rr.randint(28, 55)
+        col = rr.choice([(120, 190, 250), (255, 170, 200), (250, 230, 120), (180, 140, 100), (255, 255, 255), (160, 220, 160)])
+        d.ellipse([cx - r * 0.55, cy - r * 1.05, cx - r * 0.1, cy - r * 0.6], fill=col)
+        d.ellipse([cx + r * 0.1, cy - r * 1.05, cx + r * 0.55, cy - r * 0.6], fill=col)
+        d.ellipse([cx - r, cy - r * 0.8, cx + r, cy + r * 0.8], fill=col, outline=(90, 90, 90), width=2)
+        d.ellipse([cx - r * 0.35, cy - r * 0.2, cx - r * 0.2, cy - r * 0.05], fill=(30, 30, 30))
+        d.ellipse([cx + r * 0.2, cy - r * 0.2, cx + r * 0.35, cy - r * 0.05], fill=(30, 30, 30))
+    d.line([(x + 256, 0), (x + 256, 260)], fill=(150, 150, 150), width=6)
+    for a in (-1, 1):
+        d.line([(x + 256, 260), (x + 256 + a * 50, 330)], fill=(170, 170, 170), width=8)
+    # ATM
+    x = 1536
+    d.rectangle([x, 0, x + 511, 640], fill=(238, 238, 236))
+    d.rectangle([x, 640, x + 511, H], fill=(215, 40, 50))
+    d.rectangle([x + 90, 90, x + 420, 330], fill=(25, 60, 120))
+    _center_text(d, x + 255, 180, "ATM", font("arialbd.ttf", 70), (255, 255, 255))
+    for i in range(4):
+        for j in range(3):
+            d.rectangle([x + 170 + j * 60, 400 + i * 50, x + 215 + j * 60, 438 + i * 50], fill=(150, 150, 155))
+    d.rectangle([x + 360, 420, x + 450, 440], fill=(40, 40, 40))
+    d.rectangle([x + 360, 520, x + 450, 540], fill=(40, 40, 40))
+    _center_text(d, x + 255, 760, "365", font("arialbd.ttf", 90), (255, 255, 255))
+    save(img, "kiosk_atlas.jpg")
+
+
+def box_office_signs():
+    text_sign("sign_boxoffice.png", "BOX OFFICE", (236, 236, 236, 255), None, 1024, 200, fnt="arialbd.ttf", size=120)
+    text_sign("sign_group.png", "대관 & 단체 안내", (245, 245, 245), (22, 22, 26), 1024, 256, size=110)
+
+
+def ad_screens():
+    # 키오스크 위 가로형 광고 화면 3장
+    W, H = 1536, 288
+    img = Image.new("RGB", (W, H), (0, 0, 0))
+    d = ImageDraw.Draw(img)
+    panels = [((250, 250, 252), (30, 70, 160), "LOTTE CINEMA", "MEMBERSHIP"),
+              ((180, 225, 245), (20, 60, 110), "SPECIAL", "SCREENING"),
+              ((40, 20, 70), (255, 200, 90), "광음시네마", "4관 사운드 체험")]
+    for i, (bg, fg, t1, t2) in enumerate(panels):
+        x = i * 512
+        d.rectangle([x + 4, 4, x + 507, H - 4], fill=bg)
+        _center_text(d, x + 256, 70, t1, font("malgunbd.ttf", 62), fg)
+        _center_text(d, x + 256, 170, t2, font("malgun.ttf", 42), fg)
+    save(img, "ad_screens.jpg")
+
+
 def text_sign(name, text, fg, bg, w=1024, h=256, fnt="malgunbd.ttf", size=150):
     img = Image.new("RGBA" if bg is None else "RGB", (w, h), bg if bg else (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
@@ -439,3 +534,4 @@ if __name__ == "__main__":
     seat_fabric(); seat_logo(); wood()
     sweet_sign(); menu_boards(); lotte_sign(); exit_sign(); kiosk_screens(); posters(); city_night()
     baby_seat_sign(); theater_number(); down_sign()
+    kiosk_atlas(); box_office_signs(); ad_screens()
