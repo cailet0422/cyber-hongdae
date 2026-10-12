@@ -62,7 +62,7 @@ Notes:
 - No admin rights are required; the app installs into your user folder.
 - Data is stored in `%APPDATA%\cyber-hongdae\data`.
 - To uninstall, use **Settings → Apps**.
-- **Auto-update**: the app checks GitHub Releases on startup and every 6 hours, downloads new versions in the background, and installs them when you close it. To install right away, use the **지금 재시작하고 업데이트** (*restart and update now*) button. To turn this off or check manually, go to **Settings → 프로그램 업데이트** (*program update*). Users on v1.1.0 need to install v1.2.0+ manually once.
+- **Auto-update**: the app checks GitHub Releases on startup and every 6 hours, downloads new versions in the background, and installs them when you close it. To install right away, use the **지금 재시작하고 업데이트** (*restart and update now*) button. To turn this off or check manually, go to **Settings → 프로그램 업데이트** (*program update*).
 
 **From source (developers)**: install Node.js LTS, clone the repo and run `처음 설치.bat` (first-time setup), or build the installer yourself:
 
