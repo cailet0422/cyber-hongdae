@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: file: http: https:; style-src 'self' 'unsafe-inline'">
+  <title>사이버 홍대입구 관리자</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <aside id="side">
+    <div class="logo"><b>LOTTE CINEMA</b><span>사이버 홍대입구 관리자</span></div>
+    <nav>
+      <button data-tab="home" class="sel">🏠<span>서버</span></button>
+      <button data-tab="media">🎬<span>상영 관리</span></button>
+      <button data-tab="users">👥<span>접속자 <em id="userBadge">0</em></span></button>
+      <button data-tab="chat">💬<span>채팅</span></button>
+      <button data-tab="board">📺<span>전광판</span></button>
+      <button data-tab="settings">⚙️<span>설정</span></button>
+    </nav>
+    <div class="side-status">
+      <div id="sideStatus" class="pill off">● 서버 꺼짐</div>
+      <div id="sideNow" class="side-now"></div>
+    </div>
+  </aside>
+
+  <main>
+    <!-- ================= 홈 / 서버 ================= -->
+    <section id="tab-home" class="tab">
+      <h1>서버</h1>
+      <div class="hero card">
+        <div class="hero-left">
+          <div id="heroState" class="hero-state">서버가 꺼져 있습니다</div>
+          <p id="heroDesc" class="muted">아래 버튼을 누르면 인터넷 어디서나 접속할 수 있는 주소가 자동으로 만들어집니다.</p>
+          <div class="row gap">
+            <button id="btnOpen" class="btn huge primary">🚀 서버 열기</button>
+            <button id="btnClose" class="btn huge hidden">⏹ 서버 닫기</button>
+          </div>
+          <div id="openErr" class="err"></div>
+          <button id="errLink" class="btn hidden">🔗 허용 페이지 열기</button>
+        </div>
+        <div class="hero-right">
+          <label>공개 방식</label>
+          <div class="radio-cards" id="exposure">
+            <label><input type="radio" name="exp" value="tunnel" checked><div><b>인터넷 공개 (추천)</b><small>Cloudflare 무료 터널. 공유기 설정이 필요 없고 내 IP도 숨겨집니다. 주소는 열 때마다 바뀝니다.</small></div></label>
+            <label><input type="radio" name="exp" value="tailscale"><div><b>Tailscale Funnel (IP 숨김)</b><small>Tailscale로 공개합니다. 주소(기기이름.ts.net)가 바뀌지 않고 내 IP도 숨겨집니다. Tailscale 설치와 로그인이 필요합니다.</small></div></label>
+            <label><input type="radio" name="exp" value="upnp"><div><b>포트포워딩 자동</b><small>공유기 UPnP로 포트를 엽니다. 주소가 내 집 IP라 접속자에게 IP가 공개됩니다.</small></div></label>
+            <label><input type="radio" name="exp" value="lan"><div><b>같은 와이파이만</b><small>같은 집·같은 공유기에 연결된 사람만 접속합니다.</small></div></label>
+          </div>
+          <div class="row gap">
+            <div class="field"><label>포트</label><input id="port" type="number" min="1024" max="65535"></div>
+            <div class="field grow"><label>입장 비밀번호 (비우면 누구나)</label><input id="password" type="text" placeholder="없음"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="shareCard" class="card hidden">
+        <h2>🔗 이 주소를 친구들에게 공유하세요</h2>
+        <div class="share">
+          <div class="share-main">
+            <div class="url-box"><span id="publicUrl"></span></div>
+            <div class="row gap">
+              <button class="btn primary" id="copyUrl">📋 주소 복사</button>
+              <button class="btn" id="openMine">🎮 내 브라우저로 입장</button>
+              <button class="btn" id="openPublic">🌐 공개 주소 열어보기</button>
+            </div>
+            <div id="lanUrls" class="muted small"></div>
+          </div>
+          <img id="qr" alt="QR" class="qr">
+        </div>
+      </div>
+
+      <div class="grid3">
+        <div class="card stat"><small>접속자</small><b id="statUsers">0</b></div>
+        <div class="card stat"><small>지금 상영</small><b id="statNow">-</b></div>
+        <div class="card stat"><small>재생목록</small><b id="statList">0</b></div>
+      </div>
+
+      <div class="card">
+        <h2>처음이라면 이렇게!</h2>
+        <ol class="steps">
+          <li><b>서버 열기</b> 버튼을 누르고 주소가 나올 때까지 10초 정도 기다립니다.</li>
+          <li>나온 주소를 <b>복사</b>해서 카톡·디스코드로 친구들에게 보냅니다.</li>
+          <li><b>상영 관리</b> 탭에서 영상 파일·폴더나 유튜브·구글드라이브 링크를 추가하고 ▶ 재생을 누릅니다.</li>
+          <li>나도 같이 보려면 <b>내 브라우저로 입장</b>을 누르세요.</li>
+        </ol>
+      </div>
+
+      <details class="card">
+        <summary>서버 로그</summary>
+        <pre id="logs"></pre>
+      </details>
+    </section>
+
+    <!-- ================= 상영 관리 ================= -->
+    <section id="tab-media" class="tab hidden">
+      <h1>상영 관리 <small>4관 광음시네마</small></h1>
+      <div class="card player">
+        <div class="np">
+          <div class="np-title" id="npTitle">상영 중인 영상 없음</div>
+          <div class="np-sub muted" id="npSub"></div>
+        </div>
+        <div class="controls">
+          <button class="btn round" id="cPrev" title="이전">⏮</button>
+          <button class="btn round big primary" id="cToggle" title="재생/일시정지">▶</button>
+          <button class="btn round" id="cNext" title="다음">⏭</button>
+          <button class="btn round" id="cStop" title="정지">⏹</button>
+          <select id="cLoop" title="반복">
+            <option value="all">🔁 전체 반복</option>
+            <option value="one">🔂 한 개 반복</option>
+            <option value="none">➡ 반복 안 함</option>
+          </select>
+        </div>
+        <div class="seek">
+          <span id="posText">0:00</span>
+          <input type="range" id="seek" min="0" max="1000" value="0">
+          <span id="durText">0:00</span>
+        </div>
+      </div>
+
+      <div class="card add" id="dropZone">
+        <div class="add-buttons">
+          <button class="btn primary" id="addFiles">📄 파일 추가</button>
+          <button class="btn primary" id="addFolder">📁 폴더 추가</button>
+          <span class="muted small">또는 파일·폴더를 이 창으로 끌어다 놓으세요 · 같은 이름의 자막(smi/srt/ass)은 자동으로 붙습니다</span>
+        </div>
+        <div class="add-link">
+          <textarea id="urlInput" rows="2" placeholder="영상 링크를 붙여넣으세요 (여러 줄 가능)&#10;유튜브 영상·재생목록, 구글 드라이브 파일·폴더, 치지직/트위치/SOOP 생방송, mp4·m3u8 직접 링크, 자체 웹서버 폴더 주소 등"></textarea>
+          <div class="col">
+            <select id="urlMode">
+              <option value="auto">미리 받아서 재생 (안정적·고화질)</option>
+              <option value="stream">바로 스트리밍 (빠름)</option>
+            </select>
+            <button class="btn primary" id="addUrl">🔗 링크 추가</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row between">
+          <h2>재생목록 <small id="plCount"></small></h2>
+          <div class="row gap">
+            <span class="muted small" id="cacheInfo"></span>
+            <button class="btn small" id="clearCache">캐시 정리</button>
+            <button class="btn small danger" id="clearPl">목록 비우기</button>
+          </div>
+        </div>
+        <div id="playlist" class="playlist"></div>
+        <div id="plEmpty" class="empty">아직 영상이 없습니다. 위에서 파일이나 링크를 추가하세요.</div>
+      </div>
+    </section>
+
+    <!-- ================= 접속자 ================= -->
+    <section id="tab-users" class="tab hidden">
+      <h1>접속자 <small id="usersCount"></small></h1>
+      <div class="card">
+        <table class="tbl">
+          <thead><tr><th>닉네임</th><th>캐릭터</th><th>IP</th><th>좌석</th><th>접속 시간</th><th></th></tr></thead>
+          <tbody id="usersBody"></tbody>
+        </table>
+        <div id="usersEmpty" class="empty">접속한 사람이 없습니다.</div>
+      </div>
+      <div class="card">
+        <h2>차단 목록</h2>
+        <table class="tbl">
+          <thead><tr><th>닉네임</th><th>IP</th><th>사유</th><th>차단 시각</th><th></th></tr></thead>
+          <tbody id="bansBody"></tbody>
+        </table>
+        <div id="bansEmpty" class="empty">차단한 사람이 없습니다.</div>
+      </div>
+    </section>
+
+    <!-- ================= 채팅 ================= -->
+    <section id="tab-chat" class="tab hidden">
+      <h1>채팅</h1>
+      <div class="card chat-card">
+        <div id="chatLog" class="chat-log"></div>
+        <form id="noticeForm" class="row gap">
+          <input id="noticeInput" class="grow" maxlength="300" placeholder="📢 공지 보내기 (모든 접속자 화면에 노란 글씨로 표시)">
+          <button class="btn primary">공지 보내기</button>
+        </form>
+      </div>
+      <div class="card row gap wrap">
+        <label class="check"><input type="checkbox" id="chatEnabled"> 채팅 허용</label>
+        <div class="field"><label>슬로우 모드 (초)</label><input id="slowMode" type="number" min="0" max="120"></div>
+        <div class="field"><label>최대 글자 수</label><input id="maxLen" type="number" min="10" max="500"></div>
+        <button class="btn danger" id="clearChat">채팅 기록 지우기</button>
+      </div>
+    </section>
+
+    <!-- ================= 전광판 ================= -->
+    <section id="tab-board" class="tab hidden">
+      <h1>전광판</h1>
+      <div class="card">
+        <h2>4관 입구 전광판 문구</h2>
+        <canvas id="signPreview" width="1536" height="436"></canvas>
+        <div class="grid2">
+          <div class="field"><label>관 이름</label><input id="sHall"></div>
+          <div class="field"><label>층</label><input id="sFloor"></div>
+          <div class="field span2"><label class="check"><input type="checkbox" id="sAuto"> 지금 상영 중인 영상 제목을 자동으로 표시</label><input id="sTitle" placeholder="표시할 영화 제목"></div>
+          <div class="field span2"><label>안내 문구</label><input id="sMsg"></div>
+          <div class="field span2"><label>영문 안내 문구</label><input id="sMsgEn"></div>
+          <div class="field"><label>글자 색</label><input id="sColor" type="color"></div>
+          <div class="field"><label class="check"><input type="checkbox" id="sClock"> 시계 표시</label></div>
+          <div class="field span2 row gap"><button class="btn" id="sBg">🖼 배경 이미지 바꾸기</button><button class="btn" id="sBgReset">기본 배경(바다)</button><span id="sBgName" class="muted small"></span></div>
+        </div>
+        <button class="btn primary" id="sSave">전광판 문구 적용</button>
+      </div>
+
+      <div class="card">
+        <h2>로비 전광판 영상</h2>
+        <p class="muted small">로비 창가 쪽 대형 LED에 반복 재생됩니다. 영상·이미지·링크 모두 가능합니다. 아무것도 고르지 않으면 포스터 슬라이드와 상영 정보가 나옵니다.</p>
+        <div class="row gap wrap">
+          <button class="btn primary" id="lAddFile">📄 파일로 추가</button>
+          <input id="lUrl" class="grow" placeholder="또는 영상/이미지 링크">
+          <button class="btn" id="lAddUrl">🔗 링크 추가</button>
+        </div>
+        <div id="lobbyList" class="playlist small"></div>
+        <div class="row gap">
+          <button class="btn" id="lDefault">기본 화면(포스터 슬라이드) 사용</button>
+          <div class="field grow"><label>로비 전광판 소리 크기 <span id="lVolVal"></span></label><input type="range" id="lVol" min="0" max="1" step="0.05"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 설정 ================= -->
+    <section id="tab-settings" class="tab hidden">
+      <h1>설정</h1>
+      <div class="card grid2">
+        <div class="field span2"><label>서버 이름 (입장 화면에 표시)</label><input id="cfgName"></div>
+        <div class="field"><label>최대 접속 인원</label><input id="cfgMax" type="number" min="1" max="1000"></div>
+        <div class="field"><label>영상 최대 화질 (링크 다운로드 시)</label>
+          <select id="cfgHeight"><option value="720">720p (권장: 접속자 많을 때)</option><option value="1080">1080p</option><option value="1440">1440p</option><option value="2160">4K</option></select></div>
+        <div class="field"><label class="check"><input type="checkbox" id="cfgYtSubs"> 링크 영상의 자막 자동으로 받기</label></div>
+        <div class="field"><label>미리 받아둘 다음 영상 수</label><input id="cfgPrefetch" type="number" min="0" max="20"></div>
+        <div class="field span2"><label>무작위 닉네임에 쓸 캐릭터 이름 (쉼표로 구분)</label><input id="cfgNames"></div>
+      </div>
+      <div class="card">
+        <h2>응원봉 색 (방과후 티타임 5인)</h2>
+        <div id="stickCfg" class="stick-cfg"></div>
+      </div>
+      <div class="row gap">
+        <button class="btn primary" id="cfgSave">설정 저장</button>
+        <button class="btn" id="openData">📂 데이터 폴더 열기</button>
+      </div>
+      <p class="muted small">데이터 폴더에는 재생목록, 다운로드 캐시, 차단 목록, 설정 파일이 저장됩니다.</p>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="app.js"></script>
+</body>
+</html>
