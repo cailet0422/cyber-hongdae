@@ -276,6 +276,25 @@ def lotte_sign():
     save(img, "sign_lotte.png")
 
 
+def down_sign():
+    # 에스컬레이터 옆 브론즈 기둥: '내려가는 곳 / 10F' + 에스컬레이터 픽토그램 (배경 투명)
+    W, H = 512, 1024
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    fg = (240, 232, 214, 255)
+    for text, size, y in (("내려가는 곳", 82, 150), ("10F", 120, 330)):
+        f = font("malgunbd.ttf", size)
+        bb = d.textbbox((0, 0), text, font=f)
+        d.text(((W - (bb[2] - bb[0])) / 2 - bb[0], y - bb[1]), text, font=f, fill=fg)
+    x0, y0, s = 146, 560, 220
+    d.rectangle([x0, y0, x0 + s, y0 + s], outline=fg, width=10)
+    d.line([(x0 + 30, y0 + 70), (x0 + 80, y0 + 70), (x0 + 160, y0 + 150), (x0 + 195, y0 + 150)], fill=fg, width=14, joint="curve")
+    d.ellipse([x0 + 92, y0 + 26, x0 + 122, y0 + 56], fill=fg)
+    d.line([(x0 + 107, y0 + 60), (x0 + 107, y0 + 100)], fill=fg, width=12)
+    d.polygon([(x0 + 150, y0 + 175), (x0 + 195, y0 + 175), (x0 + 195, y0 + 130)], fill=fg)
+    save(img, "sign_down.png")
+
+
 def text_sign(name, text, fg, bg, w=1024, h=256, fnt="malgunbd.ttf", size=150):
     img = Image.new("RGBA" if bg is None else "RGB", (w, h), bg if bg else (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
@@ -419,4 +438,4 @@ if __name__ == "__main__":
     stone_panel(); theater_wall(); graffiti()
     seat_fabric(); seat_logo(); wood()
     sweet_sign(); menu_boards(); lotte_sign(); exit_sign(); kiosk_screens(); posters(); city_night()
-    baby_seat_sign(); theater_number()
+    baby_seat_sign(); theater_number(); down_sign()

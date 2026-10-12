@@ -15,8 +15,8 @@ export class World {
     this.displays = {};
     this.lightDefs = [];
     this.zones = {};
-    this.spawn = new THREE.Vector3(12.9, 0, 60);
-    this.spawnYaw = Math.PI;
+    this.spawn = new THREE.Vector3(2.3, 0, 2.8);   // 맵의 SPAWN이 없을 때: 엘리베이터 앞
+    this.spawnYaw = 0;
     this.wallBVH = null;
     this.groundBVH = null;
     this.theaterDim = 0; // 0: 밝음, 1: 상영 중 어두움
@@ -41,7 +41,7 @@ export class World {
         this.seats.push(s);
         this.seatById.set(s.id, s);
       }
-      if (ud.spawn) { o.getWorldPosition(this.spawn); }
+      if (ud.spawn) { o.getWorldPosition(this.spawn); if (typeof ud.yaw === 'number') this.spawnYaw = ud.yaw; }
       if (ud.light) {
         this.lightDefs.push({
           pos: o.getWorldPosition(new THREE.Vector3()), color: new THREE.Color().fromArray(ud.color).convertLinearToSRGB(),
