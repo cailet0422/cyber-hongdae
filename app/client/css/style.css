@@ -49,6 +49,14 @@ h2 { font-size: 15px; color: var(--dim); margin: 18px 0 10px; font-weight: 600; 
 .btn.small { padding: 6px 10px; font-size: 13px; }
 .btn:disabled { opacity: .5; cursor: default; }
 .pw-row { margin-top: 14px; }
+.model-box { margin-top: 14px; text-align: left; }
+.model-box h2 { text-align: center; }
+.model-box h2 small { font-weight: 400; }
+.model-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.model-row label.btn { cursor: pointer; display: inline-block; }
+.model-status { color: var(--dim); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+#modelStatus { margin-top: 6px; }
+.model-box .hint { text-align: center; margin-top: 8px; }
 .pw-row input, #chatInput { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: rgba(0, 0, 0, .35); color: var(--text); font: inherit; }
 
 .loading-box { text-align: center; width: min(360px, 90vw); }

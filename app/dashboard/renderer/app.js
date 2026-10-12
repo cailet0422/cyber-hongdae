@@ -1,7 +1,7 @@
 // 관리자 대시보드 화면 로직
 const $ = (id) => document.getElementById(id);
 const bridge = window.api;
-const CHAR = { yui: ['유이', '#ff7eb6'], mio: ['미오', '#4d7cff'], ritsu: ['리츠', '#ffd23f'], mugi: ['무기', '#b9f2ff'], azusa: ['아즈사', '#ff4040'] };
+const CHAR = { yui: ['유이', '#ff4848'], mio: ['미오', '#4d7cff'], ritsu: ['리츠', '#ffd23f'], mugi: ['무기', '#ff7eb6'], azusa: ['아즈사', '#3fd46e'] };
 let S = null; // 전체 상태
 let seeking = false;
 
@@ -233,9 +233,9 @@ function renderUsers() {
   $('usersEmpty').classList.toggle('hidden', u.length > 0);
   $('usersBody').innerHTML = u.map((x) => `<tr data-id="${x.id}">
     <td><b>${esc(x.nick)}</b>${x.muted ? ' <span class="muted">(채팅금지)</span>' : ''}</td>
-    <td><span class="cdot" style="background:${CHAR[x.char]?.[1]}"></span>${CHAR[x.char]?.[0] || x.char}</td>
+    <td><span class="cdot" style="background:${CHAR[x.char]?.[1]}"></span>${CHAR[x.char]?.[0] || x.char}${x.model ? `<br><small class="muted">🧸 ${esc(x.model.name || x.model.ext)}</small>` : ''}</td>
     <td class="muted">${esc(x.ip)}</td><td>${x.seat || '-'}</td><td class="muted">${fmtClock(x.joinedAt)}</td>
-    <td><button class="btn small" data-act="mute">${x.muted ? '채팅 허용' : '채팅 금지'}</button><button class="btn small" data-act="kick">강퇴</button><button class="btn small danger" data-act="ban">밴</button></td></tr>`).join('');
+    <td>${x.model ? '<button class="btn small" data-act="model">모델 초기화</button>' : ''}<button class="btn small" data-act="mute">${x.muted ? '채팅 허용' : '채팅 금지'}</button><button class="btn small" data-act="kick">강퇴</button><button class="btn small danger" data-act="ban">밴</button></td></tr>`).join('');
   const b = S.bans;
   $('bansEmpty').classList.toggle('hidden', b.length > 0);
   $('bansBody').innerHTML = b.map((x) => `<tr data-id="${x.id}"><td>${esc(x.nick)}</td><td class="muted">${esc(x.ip)}</td><td>${esc(x.reason || '-')}</td><td class="muted">${new Date(x.at).toLocaleString('ko-KR')}</td><td><button class="btn small" data-act="unban">차단 해제</button></td></tr>`).join('');
@@ -248,6 +248,7 @@ $('usersBody').addEventListener('click', async (e) => {
   if (b.dataset.act === 'kick') { if (confirm(`${u.nick} 님을 강퇴할까요? (다시 들어올 수 있음)`)) { await call('kick', id); toast('강퇴했습니다'); } }
   if (b.dataset.act === 'ban') { const r = prompt(`${u.nick} 님을 차단합니다. 같은 IP·기기로는 다시 들어올 수 없습니다.\n차단 사유 (선택):`, ''); if (r !== null) { await call('ban', id, r); toast('차단했습니다'); } }
   if (b.dataset.act === 'mute') call('mute', id, !u.muted);
+  if (b.dataset.act === 'model') { if (confirm(`${u.nick} 님의 3D 모델을 기본 캐릭터로 되돌릴까요?`)) { await call('resetModel', id); toast('모델을 초기화했습니다'); } }
 });
 $('bansBody').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) call('unban', b.closest('tr').dataset.id); });
 
@@ -361,6 +362,8 @@ function renderSettings() {
   $('cfgYtSubs').checked = c.media.ytSubs !== false;
   $('cfgPrefetch').value = c.media.prefetch ?? 3;
   $('cfgNames').value = c.names.join(', ');
+  $('cfgCustom').checked = c.customModels?.enabled !== false;
+  $('cfgCustomMB').value = c.customModels?.maxMB ?? 60;
   $('chatEnabled').checked = c.chat.enabled;
   $('slowMode').value = c.chat.slowMode;
   $('maxLen').value = c.chat.maxLen;
@@ -379,6 +382,7 @@ $('cfgSave').onclick = async () => {
   await call('setConfig', {
     serverName: $('cfgName').value.trim() || '사이버 홍대입구', maxUsers: Math.max(1, +$('cfgMax').value || 150),
     names: names.length ? names : S.config.names, stickColors: sticks,
+    customModels: { enabled: $('cfgCustom').checked, maxMB: Math.min(500, Math.max(1, +$('cfgCustomMB').value || 60)) },
     media: { maxHeight: +$('cfgHeight').value, ytSubs: $('cfgYtSubs').checked, prefetch: Math.max(0, +$('cfgPrefetch').value || 0) },
   });
   toast('✅ 설정을 저장했습니다');

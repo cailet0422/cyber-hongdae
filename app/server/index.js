@@ -17,11 +17,11 @@ const NM = path.join(APP_DIR, 'node_modules');
 const VERSION = require('../package.json').version;
 
 const CHARACTERS = [
-  { id: 'yui', name: '유이', color: '#ff7eb6' },
+  { id: 'yui', name: '유이', color: '#ff4848' },
   { id: 'mio', name: '미오', color: '#4d7cff' },
   { id: 'ritsu', name: '리츠', color: '#ffd23f' },
-  { id: 'mugi', name: '무기', color: '#b9f2ff' },
-  { id: 'azusa', name: '아즈사', color: '#ff4040' },
+  { id: 'mugi', name: '무기', color: '#ff7eb6' },
+  { id: 'azusa', name: '아즈사', color: '#3fd46e' },
 ];
 
 const DEFAULT_CONFIG = {
@@ -32,6 +32,7 @@ const DEFAULT_CONFIG = {
   maxUsers: 150,
   names: ['유이', '미오', '리츠', '무기', '아즈사', '우이', '노도카', '준', '사와코', '스미레', '나오'],
   chat: { slowMode: 0, maxLen: 200, enabled: true },
+  customModels: { enabled: true, maxMB: 60 },
   media: { maxHeight: 1080, ytSubs: true, subLangs: 'ko.*,ko,en.*,en,ja', prefetch: 3 },
   sign4: {
     hall: '4관', floor: '10층', autoTitle: true, title: '', message: '관람고객님은 지금 입장하시기 바랍니다.',
@@ -39,11 +40,11 @@ const DEFAULT_CONFIG = {
   },
   lobby: { itemId: null, volume: 0.25, startedAt: Date.now() },
   stickColors: [
-    { id: 'yui', name: '유이', color: '#ff69b4' },
+    { id: 'yui', name: '유이', color: '#ff2a2a' },
     { id: 'mio', name: '미오', color: '#2f6bff' },
     { id: 'ritsu', name: '리츠', color: '#ffd400' },
-    { id: 'mugi', name: '무기', color: '#9be8ff' },
-    { id: 'azusa', name: '아즈사', color: '#ff2a2a' },
+    { id: 'mugi', name: '무기', color: '#ff69b4' },
+    { id: 'azusa', name: '아즈사', color: '#22d45a' },
   ],
 };
 
@@ -61,7 +62,11 @@ class CinemaServer extends EventEmitter {
     this.dataDir = dataDir;
     fs.mkdirSync(dataDir, { recursive: true });
     this.config = deepMerge(DEFAULT_CONFIG, readJson(path.join(dataDir, 'config.json'), {}));
+    const OLD_STICKS = '#ff69b4,#2f6bff,#ffd400,#9be8ff,#ff2a2a';
+    if ((this.config.stickColors || []).map((x) => x.color).join(',') === OLD_STICKS) this.config.stickColors = DEFAULT_CONFIG.stickColors;
     this.bans = readJson(path.join(dataDir, 'bans.json'), []);
+    this.avatarDir = path.join(dataDir, 'avatars');
+    fs.mkdirSync(this.avatarDir, { recursive: true });
     this.media = new MediaManager({ dataDir, settings: this.config.media });
     this.playback = new Playback(this.media);
     this.users = new Map();
@@ -94,7 +99,7 @@ class CinemaServer extends EventEmitter {
   }
   publicConfig() {
     const c = this.config;
-    return { serverName: c.serverName, sign4: this.sign4State(), lobby: this.lobbyState(), stickColors: c.stickColors, characters: CHARACTERS, chat: { enabled: c.chat.enabled, slowMode: c.chat.slowMode, maxLen: c.chat.maxLen } };
+    return { serverName: c.serverName, sign4: this.sign4State(), lobby: this.lobbyState(), stickColors: c.stickColors, characters: CHARACTERS, chat: { enabled: c.chat.enabled, slowMode: c.chat.slowMode, maxLen: c.chat.maxLen }, customModels: c.customModels };
   }
   sign4State() {
     const s = this.config.sign4;
@@ -143,13 +148,51 @@ class CinemaServer extends EventEmitter {
     app.use('/vendor/three', express.static(path.join(NM, 'three'), { maxAge: '7d' }));
     app.use('/vendor/hls', express.static(path.join(NM, 'hls.js', 'dist'), { maxAge: '7d' }));
     app.use('/vendor/bvh', express.static(path.join(NM, 'three-mesh-bvh'), { maxAge: '7d' }));
+    app.use('/vendor/vrm', express.static(path.join(NM, '@pixiv', 'three-vrm', 'lib'), { maxAge: '7d' }));
     app.use('/assets', express.static(path.join(CLIENT_DIR, 'assets'), { maxAge: '1h' }));
     app.use(express.static(CLIENT_DIR));
     if (this.adminHook) this.adminHook(app);
 
+    // ---- 커스텀 3D 모델 업로드 (접속 중인 사용자만, 내용 해시로 저장)
+    // 용량 제한은 대시보드 설정을 요청마다 반영 (본문을 읽기 전에 Content-Length로 먼저 거른다)
+    const tooBig = (req, res, next) => {
+      const max = (this.config.customModels.maxMB || 60) * 1048576;
+      if (+req.headers['content-length'] > max) return res.status(413).json({ error: `파일이 너무 큽니다 (최대 ${this.config.customModels.maxMB}MB)` });
+      next();
+    };
+    app.post('/api/avatar', tooBig, express.raw({ type: () => true, limit: '500mb' }), (req, res) => {
+      if (!this.config.customModels.enabled) return res.status(403).json({ error: '이 서버는 커스텀 모델을 허용하지 않습니다' });
+      const u = [...this.users.values()].find((x) => x.uploadToken && x.uploadToken === req.headers['x-upload-token']);
+      if (!u) return res.status(401).json({ error: '접속 정보가 없습니다. 새로고침 후 다시 시도하세요' });
+      const name = decodeURIComponent(String(req.headers['x-file-name'] || 'model'));
+      const ext = (name.split('.').pop() || '').toLowerCase();
+      if (!MODEL_EXTS.includes(ext)) return res.status(400).json({ error: '지원하지 않는 형식입니다: .' + ext });
+      const buf = req.body;
+      if (!Buffer.isBuffer(buf) || buf.length < 16) return res.status(400).json({ error: '빈 파일입니다' });
+      if (buf.length > (this.config.customModels.maxMB || 60) * 1048576) return res.status(413).json({ error: `파일이 너무 큽니다 (최대 ${this.config.customModels.maxMB}MB)` });
+      const id = crypto.createHash('sha256').update(buf).digest('hex').slice(0, 32);
+      const file = path.join(this.avatarDir, `${id}.${ext}`);
+      if (!fs.existsSync(file)) fs.writeFileSync(file, buf);
+      else fs.utimesSync(file, new Date(), new Date());
+      this._pruneAvatars();
+      this.log(`모델 업로드: ${u.nick} ${name} (${(buf.length / 1048576).toFixed(1)}MB)`);
+      res.json({ id, ext });
+    });
+    app.get('/avatars/:file', (req, res) => {
+      const m = String(req.params.file).match(/^([0-9a-f]{32})\.([a-z0-9]{2,4})$/);
+      if (!m || !MODEL_EXTS.includes(m[2])) return res.status(404).end();
+      const f = path.join(this.avatarDir, req.params.file);
+      if (!fs.existsSync(f)) return res.status(404).end();
+      res.sendFile(f, { headers: { 'Cache-Control': 'public, max-age=604800, immutable', 'Content-Type': 'application/octet-stream' } });
+    });
+    app.use((err, req, res, next) => {
+      if (err?.type === 'entity.too.large') return res.status(413).json({ error: `파일이 너무 큽니다 (최대 ${this.config.customModels.maxMB}MB)` });
+      next(err);
+    });
     app.get('/api/info', (req, res) => res.json({
       name: this.config.serverName, needPassword: !!this.config.password, characters: CHARACTERS,
       online: this.users.size, max: this.config.maxUsers, version: VERSION, assets: installedAssets(),
+      customModels: this.config.customModels,
     }));
     app.get('/subs/:sid.json', (req, res) => {
       const p = this.media.subPath(req.params.sid);
@@ -361,10 +404,11 @@ class CinemaServer extends EventEmitter {
         user = {
           id: this.nextId++, ws, ip, clientId, nick: this._nickname(), char, joinedAt: Date.now(),
           st: [0, 0, 0, 0, 0], seat: null, stick: { on: false, color: 0 }, muted: false, chatTimes: [], dirty: true, emote: null,
+          model: null, uploadToken: crypto.randomBytes(16).toString('hex'),
         };
         this.users.set(user.id, user);
         this.send(user, {
-          t: 'welcome', id: user.id, nick: user.nick, char: user.char,
+          t: 'welcome', id: user.id, nick: user.nick, char: user.char, uploadToken: user.uploadToken,
           users: [...this.users.values()].filter((u) => u !== user).map((u) => this._userPublic(u)),
           pb: this.playback.snapshot(), cfg: this.publicConfig(), chat: this.chatLog.slice(-50), serverTime: Date.now(),
         });
@@ -374,7 +418,8 @@ class CinemaServer extends EventEmitter {
         this._emitUsers();
         return;
       }
-      this._onMessage(user, m);
+      // 잘못된 메시지 하나로 서버 전체가 멈추지 않도록
+      try { this._onMessage(user, m); } catch (e) { this.log(`메시지 처리 오류 (${user.nick}): ${e.message}`); }
     });
     ws.on('close', () => {
       clearTimeout(helloTimer);
@@ -389,7 +434,7 @@ class CinemaServer extends EventEmitter {
     ws.on('error', () => {});
   }
 
-  _userPublic(u) { return { id: u.id, nick: u.nick, char: u.char, st: u.st, seat: u.seat, stick: u.stick, emote: u.emote }; }
+  _userPublic(u) { return { id: u.id, nick: u.nick, char: u.char, st: u.st, seat: u.seat, stick: u.stick, emote: u.emote, model: u.model }; }
 
   _onMessage(u, m) {
     switch (m.t) {
@@ -420,6 +465,14 @@ class CinemaServer extends EventEmitter {
         if (!CHARACTERS.some((c) => c.id === m.char)) return;
         u.char = m.char;
         this.broadcast({ t: 'char', id: u.id, char: u.char });
+        return this._emitUsers();
+      }
+      case 'model': {
+        const mm = m_model(m.model);
+        if (mm && !this.config.customModels.enabled) return this.send(u, { t: 'modelfail', reason: '이 서버는 커스텀 모델을 허용하지 않습니다' });
+        if (mm && !fs.existsSync(path.join(this.avatarDir, `${mm.id}.${mm.ext}`))) return this.send(u, { t: 'modelfail', reason: '서버에 모델 파일이 없습니다. 다시 올려 주세요' });
+        u.model = mm;
+        this.broadcast({ t: 'model', id: u.id, model: mm });
         return this._emitUsers();
       }
       case 'emote': {
@@ -490,7 +543,32 @@ class CinemaServer extends EventEmitter {
 
   // ---------------------------------------------------------------- 관리자 기능
   userList() {
-    return [...this.users.values()].map((u) => ({ id: u.id, nick: u.nick, char: u.char, ip: u.ip, joinedAt: u.joinedAt, seat: u.seat, muted: u.muted, clientId: u.clientId }));
+    return [...this.users.values()].map((u) => ({ id: u.id, nick: u.nick, char: u.char, ip: u.ip, joinedAt: u.joinedAt, seat: u.seat, muted: u.muted, clientId: u.clientId, model: u.model }));
+  }
+  // 부적절한 모델을 기본 캐릭터로 되돌림
+  resetModel(id) {
+    const u = this.users.get(+id);
+    if (!u || !u.model) return false;
+    u.model = null;
+    this.broadcast({ t: 'model', id: u.id, model: null });
+    this.send(u, { t: 'modelreset', reason: '관리자가 커스텀 모델을 기본 캐릭터로 되돌렸습니다.' });
+    this.log(`모델 초기화: ${u.nick}`);
+    this._emitUsers();
+    return true;
+  }
+  // 오래된 모델 파일 정리 (총 2GB 초과 시 오래 안 쓴 것부터)
+  _pruneAvatars(maxBytes = 2 * 1024 ** 3) {
+    try {
+      const inUse = new Set([...this.users.values()].filter((x) => x.model).map((x) => `${x.model.id}.${x.model.ext}`));
+      const files = fs.readdirSync(this.avatarDir).map((f) => ({ f, st: fs.statSync(path.join(this.avatarDir, f)) })).sort((a, b) => a.st.mtimeMs - b.st.mtimeMs);
+      let total = files.reduce((n, x) => n + x.st.size, 0);
+      for (const x of files) {
+        if (total <= maxBytes) break;
+        if (inUse.has(x.f)) continue;
+        fs.rmSync(path.join(this.avatarDir, x.f), { force: true });
+        total -= x.st.size;
+      }
+    } catch {}
   }
   kick(id, reason = '') {
     const u = this.users.get(+id);
@@ -557,6 +635,21 @@ function installedAssets() {
   return {
     models: ids.filter((id) => fs.existsSync(path.join(CLIENT_DIR, 'assets', 'models', id, 'model.pmd'))),
     poses: ids.filter((id) => fs.existsSync(path.join(CLIENT_DIR, 'assets', 'poses', id + '.vpd'))),
+  };
+}
+
+const MODEL_EXTS = ['vrm', 'glb', 'gltf', 'fbx', 'obj', 'pmx', 'pmd', 'dae', '3ds', 'stl', 'ply', 'zip'];
+// 클라이언트가 보낸 모델 정보 검증
+function m_model(m) {
+  if (!m || typeof m !== 'object') return null;
+  const id = String(m.id || '');
+  const ext = String(m.ext || '').toLowerCase();
+  if (!/^[0-9a-f]{32}$/.test(id) || !MODEL_EXTS.includes(ext)) return null;
+  return {
+    id, ext,
+    name: String(m.name || '').replace(/[\u0000-\u001f]/g, '').slice(0, 60),
+    height: Math.max(0.4, Math.min(3, +m.height || 1.6)),
+    flip: !!m.flip,
   };
 }
 

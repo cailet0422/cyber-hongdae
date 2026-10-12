@@ -45,7 +45,7 @@ async function ensureParsable(file) {
 
 (async () => {
 if (!SRC) {
-  console.log('모델 팩이 없어 오리지널(클린룸) 아바타를 사용합니다. (PMD 모델을 쓰려면 README의 "모델 팩 쓰기"를 참고)');
+  console.log('기본(오리지널) 아바타를 사용합니다. 접속자는 입장 화면에서 자기 3D 모델을 올릴 수 있습니다.');
 } else for (const c of CHARS) {
   const dir = path.join(SRC, c.dir);
   if (!fs.existsSync(path.join(dir, c.pmd))) { console.log('건너뜀:', c.id); continue; }

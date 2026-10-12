@@ -33,7 +33,8 @@ The host opens a server from their own PC with one click. Friends then **just op
   - Any of the thousands of sites yt-dlp supports.
 - **Subtitles**: SMI (CP949 auto-detected), SRT, VTT, ASS/SSA (position, color, alignment). Embedded MKV subtitles and YouTube captions are attached automatically.
 - **Automatic transcoding**: formats browsers can't play (HEVC, 10-bit, AC3, AVI, …) are converted with ffmpeg, using NVENC if available.
-- **5 original avatars**, made from scratch in code (clean-room), in the K-ON! members' theme colors. You can switch at entry or in settings.
+- **5 original avatars**, made from scratch in code (clean-room), in the K-ON! members' theme colors: Yui red, Mio blue, Ritsu yellow, Mugi pink, Azusa green. You can switch at entry or in settings.
+- **Bring your own 3D model**: VRM, GLB/GLTF, FBX, PMX/PMD, OBJ, DAE, 3DS, STL, PLY or ZIP, visible to everyone.
 - **Random nicknames** such as `유이3421` or `리츠1346`, assigned on every join to prevent cliques.
 - **King-Blade-style light sticks** in 5 colors, with a wave animation.
 - **Emotes**: wave, clap, banzai, bow, dance, fighting, air guitar, air drums, and more.
@@ -129,23 +130,34 @@ On phones, use the on-screen joystick and the **E** button. If there is no sound
 
 ---
 
-## 🧸 Optional: using an MMD model pack
+## 🧸 Use your own 3D model
 
-The default avatars are **original, clean-room avatars generated in code**, so they are license-free.
+Every viewer can **upload their own 3D model and use it as their avatar**, and everyone else sees it too.
 
-If you own a K-ON! MMD (PMD) model pack that you downloaded yourself, you can use it instead:
+**How to upload**
 
-1. Put the pack folder (`Yui Hirasawa`, `Mio Akiyama`, … and optionally `character poses`) inside a `kakomiki k-on models` folder at the repository root.
-2. Run the conversion:
+- On the entry screen, click **📂 모델 파일** (*model file*) or **📁 모델 폴더** (*model folder*).
+- After joining, use **Esc → Settings → 내 3D 모델** (*my 3D model*).
+- Your last model is remembered and re-applied automatically on your next visit.
 
-   ```bash
-   cd app
-   node scripts/prepare-assets.js
-   ```
+| Format | Notes |
+|---|---|
+| **VRM** (0.x / 1.0) | Recommended. Expressions (blink, smile, …) are supported |
+| **GLB / GLTF** | Upload GLTF together with its `.bin` and textures, as a folder or ZIP |
+| **FBX** | Mixamo, Unity and Blender exports |
+| **PMX / PMD** | MMD models. Upload the whole folder so textures are included |
+| **OBJ** (+MTL) | Static meshes |
+| **DAE**, **3DS**, **STL**, **PLY** | Other formats |
+| **ZIP** | Any of the above with textures. Korean and Japanese file names inside the ZIP are handled |
 
-3. Reopen the server. PMD models are used, and if pose files are present, per-character pose emotes with instruments appear.
+**Humanoid rigs are detected automatically**: VRM humanoid, Mixamo, Unity, Blender, Unreal, 3ds Max Biped, Daz/CC, and MMD (Japanese bone names).
 
-These models' terms forbid redistribution, so they are **not** included here and are ignored by `.gitignore`.
+- **With a recognized rig**, walking, running, jumping, sitting in seats, emotes and light sticks work exactly as they do for the built-in avatars.
+- **Without a recognized rig**, the model plays its own clips (idle/walk/run) if it has any; otherwise it bounces around.
+
+**Size and facing**: height is normalized to 1.6 m and the facing direction is detected automatically. Both can be adjusted in Settings (*키* = height, *앞뒤 반전* = flip).
+
+**Limits**: 60 MB per file by default (the host can change this) and 500k triangles. Viewers can hide other people's custom models in Settings. The host can reset a user's model or disable custom models from the dashboard.
 
 ---
 
@@ -185,6 +197,8 @@ node scripts/bots.js 80 ws://localhost:7777/ws 60   # load test (80 bots ≈ 130
 | `app/server/tunnel.js` | Cloudflare, Tailscale Funnel and UPnP exposure |
 | `app/client/` | Three.js r168 client, no bundler |
 | `app/client/js/procedural-avatar.js` | original avatar generator, using MMD bone names |
+| `app/client/js/custom-model.js` | custom model loader (all formats + ZIP) and humanoid rig detection |
+| `app/client/js/avatar.js` | rig-agnostic procedural animation |
 | `app/blender/build_cinema.py` | map generator (Blender 4.2) |
 
 Rebuild the map:
@@ -202,6 +216,5 @@ blender -b -P build_cinema.py -- --render
 - This is a **non-commercial fan project** and is **not affiliated** with LOTTE Cinema / LOTTE Cultureworks or with the creators and producers of *K-ON!*. "LOTTE CINEMA", "Sweet#", "광음시네마" and *K-ON!* are names and trademarks of their respective owners.
 - The movie posters in `poster/` are copyrighted by their respective owners and are used on the poster light boxes in the map.
 - Photo and illustration textures (sign backgrounds, graffiti, night city, menu photos, carpet and stone tiles, fictional posters) were generated with OpenAI Codex (gpt-6.1-sol).
-- MMD models (kakomiki) and their pose files are **not included** because their terms forbid redistribution.
-- **Libraries**: three.js (MIT), three-mesh-bvh (MIT), hls.js (Apache-2.0), Express (MIT), ws (MIT), Electron (MIT), iconv-lite (MIT), qrcode (MIT), nat-api (MIT).
+- **Libraries**: three.js (MIT), three-vrm (MIT), three-mesh-bvh (MIT), hls.js (Apache-2.0), Express (MIT), ws (MIT), Electron (MIT), iconv-lite (MIT), qrcode (MIT), nat-api (MIT).
 - **Tools downloaded at setup time**: ffmpeg (LGPL/GPL), yt-dlp (Unlicense), cloudflared (Apache-2.0), Tailscale.

@@ -50,6 +50,7 @@ function makeAdminApi(server, extra = {}) {
     ban: (id, r) => server.ban(id, r),
     unban: (id) => server.unban(id),
     mute: (id, on) => server.mute(id, on),
+    resetModel: (id) => server.resetModel(id),
     notice: (t) => server.notice(t),
     clearChat: () => server.clearChat(),
     ...extra,

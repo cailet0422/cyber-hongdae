@@ -97,3 +97,7 @@ app.whenReady().then(() => {
   if (process.argv.includes('--autostart')) server.start().catch(() => {});
 });
 app.on('window-all-closed', async () => { if (server?.running) await server.stop(); app.quit(); });
+
+// 예상치 못한 오류로 서버 전체가 꺼지지 않도록 기록만 남긴다
+process.on('uncaughtException', (e) => server?.log('예상치 못한 오류: ' + (e?.stack || e)));
+process.on('unhandledRejection', (e) => server?.log('처리되지 않은 오류: ' + (e?.stack || e)));

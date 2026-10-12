@@ -154,7 +154,7 @@
       <h1>접속자 <small id="usersCount"></small></h1>
       <div class="card">
         <table class="tbl">
-          <thead><tr><th>닉네임</th><th>캐릭터</th><th>IP</th><th>좌석</th><th>접속 시간</th><th></th></tr></thead>
+          <thead><tr><th>닉네임</th><th>캐릭터 / 3D 모델</th><th>IP</th><th>좌석</th><th>접속 시간</th><th></th></tr></thead>
           <tbody id="usersBody"></tbody>
         </table>
         <div id="usersEmpty" class="empty">접속한 사람이 없습니다.</div>
@@ -233,6 +233,8 @@
         <div class="field"><label class="check"><input type="checkbox" id="cfgYtSubs"> 링크 영상의 자막 자동으로 받기</label></div>
         <div class="field"><label>미리 받아둘 다음 영상 수</label><input id="cfgPrefetch" type="number" min="0" max="20"></div>
         <div class="field span2"><label>무작위 닉네임에 쓸 캐릭터 이름 (쉼표로 구분)</label><input id="cfgNames"></div>
+        <div class="field"><label class="check"><input type="checkbox" id="cfgCustom"> 접속자가 자기 3D 모델을 올려 쓰도록 허용</label></div>
+        <div class="field"><label>3D 모델 파일 최대 용량 (MB)</label><input id="cfgCustomMB" type="number" min="1" max="500"></div>
       </div>
       <div class="card">
         <h2>응원봉 색 (방과후 티타임 5인)</h2>

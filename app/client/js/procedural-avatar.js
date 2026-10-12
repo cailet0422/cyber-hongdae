@@ -8,11 +8,11 @@ const U = 12.5; // m → MMD 단위 (아바타가 0.08배로 축소해서 표시
 
 // 캐릭터별 디자인 (머리 모양·색은 일반적인 묘사만 사용)
 const STYLES = {
-  yui: { hair: '#6b4228', hairStyle: 'bob', eye: '#7a5432', ribbon: '#e0405a', legs: 'skin', socks: '#2a2e45', pins: '#ffd23f' },
+  yui: { hair: '#6b4228', hairStyle: 'bob', eye: '#7a5432', ribbon: '#e8333a', legs: 'skin', socks: '#2a2e45', pins: '#ffd23f' },
   mio: { hair: '#17171f', hairStyle: 'long', eye: '#3a3a55', ribbon: '#3f6fe8', legs: 'tights' },
   ritsu: { hair: '#b67838', hairStyle: 'short', eye: '#a8732f', ribbon: '#f0b020', legs: 'skin', socks: '#f2f2f2', band: '#ffd23f' },
-  mugi: { hair: '#efdc9c', hairStyle: 'wavy', eye: '#4c7cc0', ribbon: '#7fd0f0', legs: 'skin', socks: '#2a2e45', brows: true },
-  azusa: { hair: '#121217', hairStyle: 'twin', eye: '#6a3422', ribbon: '#e02838', legs: 'tights', tieRibbon: '#e02838' },
+  mugi: { hair: '#efdc9c', hairStyle: 'wavy', eye: '#4c7cc0', ribbon: '#ff6fae', legs: 'skin', socks: '#2a2e45', brows: true },
+  azusa: { hair: '#121217', hairStyle: 'twin', eye: '#6a3422', ribbon: '#2fc45e', legs: 'tights', tieRibbon: '#e02838' },
 };
 const SKIN = '#ffe2d0';
 const BLAZER = '#242838';

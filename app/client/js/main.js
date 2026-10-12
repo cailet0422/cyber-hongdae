@@ -9,6 +9,7 @@ import { World } from './world.js';
 import { AvatarFactory, CHAR_INFO, EMOTES, ANIM } from './avatar.js';
 import { Player } from './player.js';
 import { Cinema } from './screen.js';
+import { ACCEPT, packFiles, loadTemplate } from './custom-model.js';
 
 const $ = (id) => document.getElementById(id);
 const CHARS = Object.keys(CHAR_INFO);
@@ -78,11 +79,23 @@ fetch('/api/info').then((r) => r.json()).then((j) => {
   document.title = j.name;
   $('serverInfo').textContent = `현재 ${j.online}명 접속 중 · 최대 ${j.max}명`;
   if (j.needPassword) $('pwRow').classList.remove('hidden');
+  if (j.customModels?.enabled === false) $('entryModelBox').classList.add('hidden');
   $('enterBtn').disabled = false;
   if (new URLSearchParams(location.search).has('auto')) enter();
 }).catch(() => { $('serverInfo').textContent = '서버에 연결할 수 없습니다.'; factory.setAssets(null); });
 
 $('pwInput').addEventListener('keydown', (e) => e.key === 'Enter' && $('enterBtn').click());
+$('modelFile').accept = ACCEPT;
+const entryPick = async (input) => {
+  const packed = await pickModel(input.files, $('entryModelStatus'));
+  input.value = '';
+  pendingModel = packed;
+  $('entryModelClear').classList.toggle('hidden', !packed);
+};
+$('modelFile').onchange = () => entryPick($('modelFile'));
+$('modelDir').onchange = () => entryPick($('modelDir'));
+$('entryModelClear').onclick = () => { pendingModel = null; prefs.customModel = null; $('entryModelStatus').textContent = '선택 안 함 (기본 캐릭터)'; $('entryModelClear').classList.add('hidden'); };
+if (prefs.customModel) { $('entryModelStatus').textContent = `지난번 모델: ${prefs.customModel.name}`; $('entryModelClear').classList.remove('hidden'); }
 $('enterBtn').onclick = enter;
 
 // ------------------------------------------------------------------ 게임 상태
@@ -143,6 +156,10 @@ async function start(w) {
   player.avatar = localAvatar;
   scene.add(localAvatar.root);
   localAvatar.setStick({ on: false, color: prefs.stickColor, colorHex: stickHex(prefs.stickColor) });
+  uploadToken = w.uploadToken;
+  // 입장 화면에서 고른 모델 업로드, 또는 지난번 모델 다시 적용
+  if (pendingModel) applyPendingModel();
+  else if (prefs.customModel && cfg.customModels?.enabled !== false) { myModel = prefs.customModel; net.send({ t: 'model', model: myModel }); rebuildLocal(); }
 
   $('myNick').textContent = w.nick;
   $('myDot').style.background = CHAR_INFO[w.char].color;
@@ -166,7 +183,7 @@ async function start(w) {
   requestAnimationFrame(loop);
 }
 
-function stickHex(i) { return cfg?.stickColors?.[i]?.color || ['#ff69b4', '#2f6bff', '#ffd400', '#9be8ff', '#ff2a2a'][i] || '#ff69b4'; }
+function stickHex(i) { return cfg?.stickColors?.[i]?.color || ['#ff2a2a', '#2f6bff', '#ffd400', '#ff69b4', '#22d45a'][i] || '#ff2a2a'; }
 
 // ------------------------------------------------------------------ 원격 아바타
 function addRemote(u) {
@@ -178,8 +195,10 @@ function addRemote(u) {
 }
 async function loadRemoteAvatar(r) {
   const char = r.info.char;
-  const av = await factory.create(char, { nick: r.info.nick });
-  if (!remotes.has(r.info.id) || r.info.char !== char) { av.dispose(); return; }
+  const model = prefs.showCustom ? r.info.model : null;
+  const token = (r.loadToken = (r.loadToken || 0) + 1);
+  const av = await factory.create(char, { nick: r.info.nick, model });
+  if (!remotes.has(r.info.id) || r.loadToken !== token) { av.dispose(); return; }
   r.avatar?.dispose();
   r.avatar = av;
   scene.add(av.root);
@@ -251,6 +270,15 @@ function onMsg(m) {
       break;
     }
     case 'sitfail': toast('이미 다른 사람이 앉은 자리입니다.'); break;
+    case 'model': {
+      const r = remotes.get(m.id);
+      if (r) { r.info.model = m.model; loadRemoteAvatar(r); }
+      break;
+    }
+    case 'modelfail': case 'modelreset':
+      toast('⚠ ' + m.reason, 5000);
+      prefs.customModel = null; myModel = null; rebuildLocal(); renderModelUi();
+      break;
     case 'pb': cinema.applyPlayback(m.d); updateNowPlaying(m.d); break;
     case 'pbs': cinema.syncTick(m); break;
     case 'cfg':
@@ -360,9 +388,51 @@ function buildUi() {
     if (id === localAvatar.char) return;
     chosen = id; prefs.char = id;
     charCards($('charPick2'), true, pick2);
+
+  // 커스텀 모델 설정
+  const onFiles = async (input) => {
+    const packed = await pickModel(input.files, $('modelStatus'));
+    input.value = '';
+    if (packed) { pendingModel = packed; applyPendingModel(); }
+  };
+  $('modelFile2').accept = ACCEPT;
+  $('modelFile2').onchange = () => onFiles($('modelFile2'));
+  $('modelDir2').onchange = () => onFiles($('modelDir2'));
+  $('modelReset').onclick = () => { myModel = null; prefs.customModel = null; net.send({ t: 'model', model: null }); rebuildLocal(); renderModelUi(); toast('기본 캐릭터로 돌아왔습니다'); };
+  $('modelHeight').value = prefs.modelHeight;
+  $('modelHeightVal').textContent = prefs.modelHeight.toFixed(2) + 'm';
+  $('modelHeight').oninput = () => { prefs.modelHeight = +$('modelHeight').value; $('modelHeightVal').textContent = prefs.modelHeight.toFixed(2) + 'm'; };
+  $('modelHeight').onchange = updateModelOptions;
+  $('modelFlip').checked = !!prefs.modelFlip;
+  $('modelFlip').onchange = () => { prefs.modelFlip = $('modelFlip').checked; updateModelOptions(); };
+  $('showCustom').checked = prefs.showCustom;
+  $('showCustom').onchange = () => { prefs.showCustom = $('showCustom').checked; for (const r of remotes.values()) if (r.info.model) loadRemoteAvatar(r); };
+  $('customModelBox').classList.toggle('hidden', cfg.customModels?.enabled === false);
+  renderModelUi();
     changeChar(id);
   };
   charCards($('charPick2'), true, pick2);
+
+  // 커스텀 모델 설정
+  const onFiles = async (input) => {
+    const packed = await pickModel(input.files, $('modelStatus'));
+    input.value = '';
+    if (packed) { pendingModel = packed; applyPendingModel(); }
+  };
+  $('modelFile2').accept = ACCEPT;
+  $('modelFile2').onchange = () => onFiles($('modelFile2'));
+  $('modelDir2').onchange = () => onFiles($('modelDir2'));
+  $('modelReset').onclick = () => { myModel = null; prefs.customModel = null; net.send({ t: 'model', model: null }); rebuildLocal(); renderModelUi(); toast('기본 캐릭터로 돌아왔습니다'); };
+  $('modelHeight').value = prefs.modelHeight;
+  $('modelHeightVal').textContent = prefs.modelHeight.toFixed(2) + 'm';
+  $('modelHeight').oninput = () => { prefs.modelHeight = +$('modelHeight').value; $('modelHeightVal').textContent = prefs.modelHeight.toFixed(2) + 'm'; };
+  $('modelHeight').onchange = updateModelOptions;
+  $('modelFlip').checked = !!prefs.modelFlip;
+  $('modelFlip').onchange = () => { prefs.modelFlip = $('modelFlip').checked; updateModelOptions(); };
+  $('showCustom').checked = prefs.showCustom;
+  $('showCustom').onchange = () => { prefs.showCustom = $('showCustom').checked; for (const r of remotes.values()) if (r.info.model) loadRemoteAvatar(r); };
+  $('customModelBox').classList.toggle('hidden', cfg.customModels?.enabled === false);
+  renderModelUi();
 
   addEventListener('keydown', onKey);
 }
@@ -414,15 +484,96 @@ function doEmote(id) {
 
 async function changeChar(id) {
   net.send({ t: 'char', char: id });
-  const av = await factory.create(id, { isLocal: true });
+  await rebuildLocal(id);
+  toast(myModel ? `${CHAR_INFO[id].name} 컬러로 변경했습니다 (커스텀 모델 사용 중)` : `${CHAR_INFO[id].name}(으)로 변경했습니다.`);
+}
+
+// 내 아바타 다시 만들기 (캐릭터/커스텀 모델 변경 시)
+async function rebuildLocal(char = localAvatar?.char || chosen) {
+  const token = (rebuildLocal.token = (rebuildLocal.token || 0) + 1);
+  const av = await factory.create(char, { isLocal: true, model: myModel, onCustomError: (e) => toast('⚠ 모델을 불러오지 못해 기본 캐릭터를 씁니다: ' + e.message, 6000) });
+  if (token !== rebuildLocal.token) { av.dispose(); return; }
   const old = localAvatar;
   localAvatar = av;
   player.avatar = av;
   scene.add(av.root);
   av.setStick({ ...old.stick });
   old.dispose();
-  $('myDot').style.background = CHAR_INFO[id].color;
-  toast(`${CHAR_INFO[id].name}(으)로 변경했습니다.`);
+  $('myDot').style.background = CHAR_INFO[char].color;
+}
+
+// ------------------------------------------------------------------ 커스텀 3D 모델
+let uploadToken = null;
+let pendingModel = null; // 입장 전 고른 모델 { data, ext, name }
+let myModel = null;      // 현재 적용된 모델 { id, ext, name, height, flip }
+
+async function pickModel(files, statusEl) {
+  if (!files?.length) return null;
+  statusEl.textContent = '모델 확인 중…';
+  try {
+    const packed = await packFiles(files);
+    const max = (cfg?.customModels?.maxMB || info?.customModels?.maxMB || 60) * 1048576;
+    if (packed.data.length > max) throw new Error(`파일이 너무 큽니다 (${(packed.data.length / 1048576).toFixed(1)}MB, 최대 ${max / 1048576}MB)`);
+    const tpl = await loadTemplate({ data: packed.data, ext: packed.ext });
+    statusEl.textContent = `✅ ${packed.name} · ${Math.round(tpl.triangles / 1000)}k 폴리곤${tpl.kind === 'vrm' ? ' · VRM' : ''}`;
+    return packed;
+  } catch (e) {
+    statusEl.textContent = '❌ ' + e.message;
+    return null;
+  }
+}
+
+function uploadModel(packed, onProgress) {
+  return new Promise((resolve, reject) => {
+    const x = new XMLHttpRequest();
+    x.open('POST', '/api/avatar');
+    x.setRequestHeader('x-upload-token', uploadToken);
+    x.setRequestHeader('x-file-name', encodeURIComponent(packed.name.endsWith('.' + packed.ext) ? packed.name : packed.name + '.' + packed.ext));
+    x.upload.onprogress = (e) => e.total && onProgress?.(e.loaded / e.total);
+    x.onload = () => {
+      let j = {};
+      try { j = JSON.parse(x.responseText); } catch {}
+      if (x.status === 200) resolve(j); else reject(new Error(j.error || '업로드 실패 (' + x.status + ')'));
+    };
+    x.onerror = () => reject(new Error('업로드 중 연결이 끊어졌습니다'));
+    x.send(new Blob([packed.data]));
+  });
+}
+
+async function applyPendingModel() {
+  const packed = pendingModel;
+  pendingModel = null;
+  if (!packed) return;
+  if (cfg.customModels?.enabled === false) return toast('이 서버는 커스텀 모델을 허용하지 않습니다', 4000);
+  try {
+    toast('모델 올리는 중…', 60000);
+    const r = await uploadModel(packed, (p) => toast(`모델 올리는 중… ${Math.round(p * 100)}%`, 60000));
+    myModel = { id: r.id, ext: r.ext, name: packed.name, height: prefs.modelHeight || 1.6, flip: !!prefs.modelFlip };
+    prefs.customModel = myModel;
+    net.send({ t: 'model', model: myModel });
+    await rebuildLocal();
+    toast('✅ 내 3D 모델을 적용했습니다');
+  } catch (e) {
+    toast('⚠ ' + e.message, 6000);
+  }
+  renderModelUi();
+}
+
+function updateModelOptions() {
+  if (!myModel) return;
+  myModel = { ...myModel, height: prefs.modelHeight, flip: !!prefs.modelFlip };
+  prefs.customModel = myModel;
+  net.send({ t: 'model', model: myModel });
+  clearTimeout(updateModelOptions.t);
+  updateModelOptions.t = setTimeout(() => rebuildLocal(), 250);
+}
+
+function renderModelUi() {
+  const el = $('myModelName');
+  if (!el) return;
+  el.textContent = myModel ? `사용 중: ${myModel.name}` : '기본 캐릭터 사용 중';
+  $('modelReset').classList.toggle('hidden', !myModel);
+  $('modelOpts').classList.toggle('hidden', !myModel);
 }
 
 function useKey() {

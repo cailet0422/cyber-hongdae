@@ -12,6 +12,7 @@
     "bots": "node scripts/bots.js"
   },
   "dependencies": {
+    "@pixiv/three-vrm": "^3.5.5",
     "express": "^5.1.0",
     "hls.js": "1.6.13",
     "iconv-lite": "^0.7.0",

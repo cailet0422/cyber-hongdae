@@ -65,6 +65,7 @@ export class Net extends EventTarget {
 const DEFAULTS = {
   char: null, volume: 0.8, lobbyVolume: 0.35, subSize: 1, sens: 1, quality: 'mid', maxAvatars: 40,
   showNames: true, showBubbles: true, showSubs: true, clientId: null, stickColor: 0, firstPerson: false,
+  customModel: null, modelHeight: 1.6, modelFlip: false, showCustom: true,
 };
 export const prefs = (() => {
   let data = { ...DEFAULTS };
