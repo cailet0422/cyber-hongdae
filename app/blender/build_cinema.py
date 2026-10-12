@@ -129,6 +129,7 @@ make_mat("invisible", color=(1, 0, 1), alpha=0.0)
 make_mat("bronze", color=(0.42, 0.3, 0.17), rough=0.35, metal=0.85)
 make_mat("metal_gray", color=(0.5, 0.51, 0.52), rough=0.45, metal=0.6)
 make_mat("esc_yellow", color=(0.95, 0.7, 0.05), rough=0.5)
+make_mat("leather", color=(0.045, 0.045, 0.05), rough=0.42)
 make_mat("wall_beige", color=(0.8, 0.72, 0.58), rough=0.7)
 make_mat("belt_pink", color=(0.9, 0.1, 0.4), rough=0.5)
 make_mat("claw_pink", color=(0.95, 0.62, 0.76), rough=0.4)
@@ -138,7 +139,10 @@ make_mat("fridge_lit", color=(0.85, 0.9, 0.95), rough=0.3, emit=(0.8, 0.9, 1.0),
 make_mat("sign_sweet", tex="sign_sweet.jpg", emit=(1, 1, 1), emit_strength=2.5, emit_tex=True)
 make_mat("menu_boards", tex="menu_boards_ai.png" if tex_path("menu_boards_ai.png") else "menu_boards.jpg", emit=(1, 1, 1), emit_strength=1.4, emit_tex=True)
 make_mat("sign_lotte", tex="sign_lotte.png", alpha_tex=True, emit=(1, 1, 1), emit_strength=1.5, emit_tex=True)
+make_mat("sign_lotte_r", tex="sign_lotte_r.png", alpha_tex=True, emit=(1, 1, 1), emit_strength=1.5, emit_tex=True)
 make_mat("sign_exit", tex="sign_exit.jpg", emit=(1, 1, 1), emit_strength=2.0, emit_tex=True)
+make_mat("sign_exit_l", tex="sign_exit_l.jpg", emit=(1, 1, 1), emit_strength=2.0, emit_tex=True)
+make_mat("sign_exit_door", tex="sign_exit_door.jpg", emit=(1, 1, 1), emit_strength=2.0, emit_tex=True)
 make_mat("kiosk_screens", tex="kiosk_screens.jpg", emit=(1, 1, 1), emit_strength=1.2, emit_tex=True)
 make_mat("posters", tex="posters_ai.jpg" if tex_path("posters_ai.jpg") else "posters.jpg", emit=(1, 1, 1), emit_strength=0.9, emit_tex=True)
 make_mat("city_night", tex="city_night_ai.jpg" if tex_path("city_night_ai.jpg") else "city_night.jpg", emit=(1, 1, 1), emit_strength=1.0, emit_tex=True)
@@ -146,6 +150,7 @@ make_mat("graffiti", tex="graffiti_ai.jpg", rough=0.9) if tex_path("graffiti_ai.
 make_mat("sign_babyseat", tex="sign_babyseat.png", alpha_tex=True, emit=(1, 1, 1), emit_strength=1.0, emit_tex=True)
 make_mat("sign_4", tex="sign_4.png", alpha_tex=True, emit=(1, 1, 1), emit_strength=1.5, emit_tex=True)
 make_mat("sign_5", tex="sign_5.png", alpha_tex=True, emit=(1, 1, 1), emit_strength=1.5, emit_tex=True)
+make_mat("sign_5_door", tex="sign_5_door.png", alpha_tex=True, emit=(1, 1, 1), emit_strength=1.5, emit_tex=True)
 make_mat("sign_6", tex="sign_6.png", alpha_tex=True, emit=(1, 1, 1), emit_strength=1.5, emit_tex=True)
 make_mat("sign_wc", tex="sign_wc.png", alpha_tex=True, emit=(1, 1, 1), emit_strength=1.2, emit_tex=True)
 make_mat("sign_hydrant", tex="sign_hydrant.png", rough=0.4)
@@ -246,6 +251,26 @@ def prism_vz(name, u0, u1, pts, mat, collide=False, props=None, merge=True):
     if collide:
         p["collide"] = 1
     return _new_obj(name, me, p, merge)
+
+
+def prism_uz(name, v0, v1, pts, mat, collide=False):
+    """(u, z) 단면 볼록 다각형을 v0~v1로 압출 (객석 옆 경사 난간용)"""
+    me = bpy.data.meshes.new(name)
+    bm = bmesh.new()
+    a = [bm.verts.new((u, -v0, z)) for u, z in pts]
+    b = [bm.verts.new((u, -v1, z)) for u, z in pts]
+    bm.faces.new(a)
+    bm.faces.new(b[::-1])
+    for i in range(len(pts)):
+        j = (i + 1) % len(pts)
+        bm.faces.new([a[i], a[j], b[j], b[i]])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.normal_update()
+    _uv_world(bm, [mat], me)
+    bm.to_mesh(me)
+    bm.free()
+    me.materials.append(MATS[mat])
+    return _new_obj(name, me, {"collide": 1} if collide else None, True)
 
 
 def wall(name, u0, v0, u1, v1, z0, z1, mat, thick=0.3, **kw):
@@ -466,7 +491,7 @@ wall("A_wall_s", AUD_U0 - TH, AUD_V1 + TH / 2, AUD_U1 + TH, AUD_V1 + TH / 2, 0, 
 STRIP_V0, STRIP_V1 = AUD_V1 + TH, V(340) - 0.15
 PASS_U0, PASS_U1 = 14.6, 16.0            # 매점 왼쪽 통로 입구
 box("B_strip", AUD_U0 - TH, PASS_U0, STRIP_V0, STRIP_V1, 0, LOBBY_H, "wall_stone")
-plane("SIGN_lotte", 8.4, STRIP_V1, 3.65, 6.0, 1.5, "S", "sign_lotte", offset=0.02)
+plane("SIGN_lotte", 8.4, STRIP_V1, 3.65, 6.0, 1.5, "S", "sign_lotte_r", offset=0.02)   # 4/5/6관은 오른쪽(동쪽)
 # 4관 출구 복도(서쪽, U(390)~U(435))와 입구 통로(동쪽, U(435)~U(465)) - 두 복도는 북쪽 끝에서 만나 4관 북쪽 복도로 이어짐
 IN_U0, IN_U1 = U(435) + 0.3, U(465) + 0.15     # 입구 통로 내부
 wall_with_openings("E_cor_east", "v", U(435) + 0.15, V(45), V(265), 0, COR_H, "wall_charcoal", [(V(45), V(45) + 2.2, COR_H)])
@@ -502,9 +527,11 @@ box("E_pillar_clad", AUD_U1 + TH, AUD_U1 + TH + 0.03, FAC_V + 0.2, STRIP_V0 + 0.
 # 복도 내부: 벽등과 출구 사인
 for i, vv in enumerate([V(240), V(190), V(140), V(90)]):
     plane(f"L_cor_glow_{i}", U(435) - 0.01, vv, 1.9, 0.9, 1.6, "W", "glow_cone", offset=0.0)
-    light(f"LIGHT_cor_{i}", U(413), vv, 2.8, intensity=3.0, distance=6.0, color=(1, 0.8, 0.6))
-plane("SIGN_exit_ent", (ENT_U0 + ENT_U1) / 2, AUD_V0 - TH, 2.85, 0.6, 0.3, "N", "sign_exit", offset=0.01, merge=True)
-plane("SIGN_exit_cor", (DOOR_U0 + DOOR_U1) / 2, FAC_V - 0.2, 2.75, 0.6, 0.3, "N", "sign_exit", offset=0.01, merge=True)
+    if i < 3:
+        light(f"LIGHT_cor_{i}", U(413), vv + 1.9, COR_H - 0.05, kind="spot", angle=65, intensity=4.5, distance=6.0, color=(1, 0.8, 0.6))
+light("LIGHT_cor_n", (U(330) + AUD_U1) / 2, (V(45) + AUD_V0 - TH) / 2, COR_H - 0.05, kind="spot", angle=65, intensity=4.5, distance=6.0, color=(1, 0.8, 0.6))
+plane("SIGN_exit_ent", (ENT_U0 + ENT_U1) / 2, AUD_V0 - TH, 2.85, 0.6, 0.3, "N", "sign_exit_l", offset=0.01, merge=True)   # 나가는 쪽: 동쪽 복도
+plane("SIGN_exit_cor", (DOOR_U0 + DOOR_U1) / 2, FAC_V - 0.2, 2.75, 0.6, 0.3, "N", "sign_exit_door", offset=0.01, merge=True)
 # 4관 입구 통로 (광음시네마 벽과 베이비시트 사이로 들어가 안쪽 문을 지나 북쪽 끝에서 출구 복도와 합류)
 IND_V = V(200)
 IND_U0, IND_U1 = IN_U0 + 0.4, IN_U1 - 0.4
@@ -516,7 +543,7 @@ box("IN_door", IND_U0, IND_U0 + 0.05, IND_V - 1.25, IND_V - 0.1, 0, 2.25, "metal
 plane("SIGN_4_in", (IND_U0 + IND_U1) / 2, IND_V + 0.1, 2.72, 1.0, 0.5, "S", "sign_4", offset=0.01, merge=True)
 for i, vv in enumerate([V(245), V(150), V(70)]):
     plane(f"L_in_glow_{i}", IN_U0 + 0.01, vv, 1.9, 0.9, 1.6, "E", "glow_cone", offset=0.0)
-    light(f"LIGHT_in_{i}", (IN_U0 + IN_U1) / 2, vv, 2.8, intensity=3.0, distance=6.0, color=(1, 0.8, 0.6))
+    light(f"LIGHT_in_{i}", (IN_U0 + IN_U1) / 2, vv, COR_H - 0.05, kind="spot", angle=65, intensity=4.5, distance=6.0, color=(1, 0.8, 0.6))
 
 # ---------------------------------------------------------------- 4관 내부 (광음시네마)
 # 바닥: 앞쪽 평지(카펫)
@@ -539,21 +566,12 @@ plane("SCREEN_4", AUD_U1 - 0.62, SCR_CV, SCR_Z0 + SCR_H / 2, SCR_W, SCR_H, "W", 
 # 스크린 앞 무대 단
 box("A_stage", AUD_U1 - 1.6, AUD_U1 - 0.6, AUD_V0 + 0.5, AUD_V1 - 0.5, 0, 0.35, "black_plastic", floor=True)
 # 광음 서브우퍼 큐브 + 보라색 LED 바닥 (사진 참고)
-for i in range(8):
-    cv = AUD_V0 + 1.6 + i * (AUD_V1 - AUD_V0 - 3.2) / 7
-    cu = AUD_U1 - 2.4 - (0.6 if i in (0, 7) else 0)
+for i, cv in enumerate([5.9, 9.1, 10.3, 11.5, 12.7, 15.7]):
+    cu = AUD_U1 - 2.4 - (0.4 if i in (0, 5) else 0)
     box(f"A_sub_{i}", cu - 0.42, cu + 0.42, cv - 0.42, cv + 0.42, 0.1, 1.0, "black_plastic")
     box(f"A_sub_base_{i}", cu - 0.5, cu + 0.5, cv - 0.5, cv + 0.5, 0.0, 0.1, "emit_purple", collide=False)
     box(f"A_sub_top_{i}", cu - 0.1, cu + 0.1, cv - 0.06, cv + 0.06, 1.0, 1.01, "metal", collide=False)
     light(f"LIGHT_sub_{i}", cu, cv, 0.15, color=(0.55, 0.25, 1.0), intensity=1.6, distance=2.5, theater=1)
-# 측벽 스피커 + 업라이트 글로우
-for side, vv, fac in (("n", AUD_V0 + 0.08, "S"), ("s", AUD_V1 - 0.08, "N")):
-    for i in range(5):
-        cu = AUD_U1 - 3.5 - i * 3.0
-        sgn = 1 if side == "n" else -1
-        box(f"A_spk_{side}{i}", cu - 0.3, cu + 0.3, vv, vv + sgn * 0.35, 4.6, 5.4, "black_plastic", collide=False)
-        plane(f"A_glow_{side}{i}", cu + 1.5, vv, 3.4, 1.4, 4.2, fac, "glow_cone", offset=0.02)
-        box(f"A_uplight_{side}{i}", cu + 1.4, cu + 1.6, vv, vv + sgn * 0.12, 1.25, 1.35, "emit_warm", collide=False)
 # 남측벽 그래피티 벽화 (스크린 가까운 쪽)
 plane("A_graffiti", AUD_U1 - 5.6, AUD_V1 - 0.08, 4.0, 8.4, 4.2, "N", "graffiti", offset=0.03, merge=False)
 # 천장 다운라이트 (작은 발광점)
@@ -564,61 +582,95 @@ for i in range(6):
 box("A_proj_win", AUD_U0, AUD_U0 + 0.1, (AUD_V0 + AUD_V1) / 2 - 0.8, (AUD_V0 + AUD_V1) / 2 + 0.8, 6.3, 7.1, "emit_blue", collide=False)
 empty("PROJECTOR", AUD_U0 + 0.15, (AUD_V0 + AUD_V1) / 2, 6.7, {"projector": 1})
 # 출구 사인 (스크린 옆 입장구 내부 쪽)
-plane("SIGN_exit_in", (ENT_U0 + ENT_U1) / 2, AUD_V0 + 0.1, 2.85, 0.6, 0.3, "S", "sign_exit", offset=0.01, merge=True)
-# 극장 조명
-light("LIGHT_th_front", AUD_U1 - 4, (AUD_V0 + AUD_V1) / 2, 6.5, intensity=6.0, distance=14.0, color=(1, 0.85, 0.7), theater=1)
-light("LIGHT_th_mid", (AUD_U0 + AUD_U1) / 2, (AUD_V0 + AUD_V1) / 2, 7.5, intensity=6.0, distance=14.0, color=(1, 0.85, 0.7), theater=1)
-light("LIGHT_th_back", AUD_U0 + 3, (AUD_V0 + AUD_V1) / 2, 7.5, intensity=5.0, distance=12.0, color=(1, 0.85, 0.7), theater=1)
+plane("SIGN_exit_in", (ENT_U0 + ENT_U1) / 2, AUD_V0 + 0.1, 2.85, 0.6, 0.3, "S", "sign_exit_door", offset=0.01, merge=True)
+# 극장 조명: 천장 다운라이트 자리에서 아래로 비추는 스포트 (천장이 하얗게 뜨지 않게)
+for i, j in ((0, 1), (0, 3), (2, 1), (2, 3), (4, 1), (4, 3)):
+    light(f"LIGHT_th_{i}_{j}", AUD_U0 + 1.5 + i * 2.9, AUD_V0 + 1.5 + j * 3.0, AUD_H - 0.05, kind="spot", angle=55, penumbra=0.7,
+          intensity=5.0, distance=13.0, color=(1, 0.85, 0.7), theater=1)
 empty("ZONE_THEATER4", (AUD_U0 + AUD_U1) / 2, (AUD_V0 + AUD_V1) / 2, AUD_H / 2,
       {"zone": "theater4", "su": AUD_U1 - AUD_U0, "sv": AUD_V1 - AUD_V0, "sz": AUD_H})
 
-# --- 객석 (스타디움식) ---
-AISLE_V1 = AUD_V0 + 1.5     # 북쪽 계단 통로 v: AUD_V0 ~ AISLE_V1
-SEAT_PITCH = 0.62
+# --- 객석 (스타디움식, 사진 기준) ---
+# 뒤에서 스크린을 보면: 왼쪽(북) 큰 블록 13석 | 가운데 계단 통로 | 오른쪽(남) 작은 블록 5석 | 남쪽 벽 옆 계단 통로(경사 난간)
+# 오른쪽 작은 블록은 앞 두 줄(A·B)이 없다
+ROWS = "ABCDEFGHIJK"
 ROW_PITCH = 1.05
-ROWS = "BCDEFGHIJK"
-ROW_A_U = AUD_U1 - 5.2
-ROW_B_U = ROW_A_U - 1.35
+ROW_A_U = AUD_U1 - 5.5           # 스크린 앞 무대·서브우퍼 공간
 RISE0, RISE = 0.3, 0.4
+SEAT_PITCH = 0.66
+BLK_N = (AUD_V0 + 0.35, 13)      # (블록 북쪽 끝 v, 좌석 수)
+AISLE_C0 = BLK_N[0] + BLK_N[1] * SEAT_PITCH
+AISLE_C1 = AISLE_C0 + 1.3
+BLK_S = (AISLE_C1, 5)
+S_BLOCK_FROM = 2                 # 남쪽 블록은 C열부터
+WALK_V0 = AISLE_C1 + BLK_S[1] * SEAT_PITCH + 0.1
+AISLES = [(AISLE_C0, AISLE_C1), (WALK_V0, AUD_V1)]
+SEAT_SPANS = [(AUD_V0, AISLE_C0), (AISLE_C1, WALK_V0)]
 
 
-def row_u(k):  # k=0 → B열
-    return ROW_B_U - k * ROW_PITCH
+def row_u(k):  # k=0 → A열
+    return ROW_A_U - k * ROW_PITCH
 
 
 def row_z(k):
     return RISE0 + k * RISE
 
 
-# 단(tier) 블록: 각 열 플랫폼
-for k in range(len(ROWS)):
-    uc = row_u(k)
-    u_front = uc + ROW_PITCH / 2 + (0.15 if k == 0 else 0)
-    u_back = uc - ROW_PITCH / 2 if k < len(ROWS) - 1 else AUD_U0
-    z = row_z(k)
-    box(f"T_tier_{k}", u_back, u_front, AISLE_V1, AUD_V1, 0, z, "carpet", side_mat="carpet_dark", floor=True)
-    # 단 앞면 스텝 라이트
-    box(f"T_tier_led_{k}", u_front, u_front + 0.01, AISLE_V1, AUD_V1, z - 0.05, z - 0.03, "emit_step", collide=False)
-    # 계단(통로): 열당 2단
-    for s in range(2):
-        z_s = row_z(k) - RISE / 2 * (1 - s) if k > 0 else (RISE0 / 2 * (s + 1))
-        if k == 0:
-            z_s = RISE0 / 2 * (s + 1)
-        s_u1 = u_front - s * (ROW_PITCH / 2)
-        s_u0 = s_u1 - ROW_PITCH / 2
-        if k == len(ROWS) - 1 and s == 1:
-            s_u0 = AUD_U0
-        box(f"T_stair_{k}_{s}", s_u0, s_u1, AUD_V0, AISLE_V1, 0, z_s, "carpet_dark", floor=True)
-        box(f"T_stair_led_{k}_{s}", s_u1, s_u1 + 0.01, AUD_V0 + 0.1, AISLE_V1 - 0.1, z_s - 0.03, z_s - 0.01, "emit_step", collide=False)
-# 통로 난간 (계단과 객석 사이 - 열 출입 위해 낮은 끝막이만)
-for k in range(len(ROWS)):
-    uc = row_u(k)
-    box(f"T_endcap_{k}", uc - 0.45, uc + 0.15, AISLE_V1 + 0.02, AISLE_V1 + 0.1, row_z(k), row_z(k) + 0.75, "blue_seat_shell", collide=False)
+def row_front(k):
+    return row_u(k) + ROW_PITCH / 2 + (0.15 if k == 0 else 0)
 
-# 좌석 메시 (공유 메시 → glTF에서 1번만 저장, 클라이언트에서 인스턴싱)
-def build_seat_mesh(name, recliner=False):
+
+# 단(tier) 블록: 좌석 구역마다 열 플랫폼 + 앞면 스텝 라이트, 통로는 열당 2단 계단
+for k in range(len(ROWS)):
+    u_front = row_front(k)
+    u_back = row_u(k) - ROW_PITCH / 2 if k < len(ROWS) - 1 else AUD_U0
+    z = row_z(k)
+    for n, (a, b) in enumerate(SEAT_SPANS):
+        box(f"T_tier_{k}_{n}", u_back, u_front, a, b, 0, z, "carpet", side_mat="carpet_dark", floor=True)
+        box(f"T_tier_led_{k}_{n}", u_front, u_front + 0.01, a, b, z - 0.05, z - 0.03, "emit_step", collide=False)
+    # 계단은 이 열 앞면 ~ 다음 열 앞면을 빈틈없이 두 단으로 나눔 (틈이 있으면 0.5m 턱이 생겨 못 올라감)
+    st_back = row_front(k + 1) if k < len(ROWS) - 1 else row_u(k) - ROW_PITCH / 2
+    for n, (a, b) in enumerate(AISLES):
+        for st in range(2):
+            z_s = RISE0 / 2 * (st + 1) if k == 0 else row_z(k) - RISE / 2 * (1 - st)
+            s_u1 = u_front - st * (u_front - st_back) / 2
+            s_u0 = AUD_U0 if (k == len(ROWS) - 1 and st == 1) else s_u1 - (u_front - st_back) / 2
+            box(f"T_stair_{k}_{n}_{st}", s_u0, s_u1, a, b, 0, z_s, "carpet_dark", floor=True)
+            box(f"T_stair_led_{k}_{n}_{st}", s_u1, s_u1 + 0.01, a + 0.1, b - 0.1, z_s - 0.03, z_s - 0.01, "emit_step", collide=False)
+# 남쪽 벽 옆 통로의 경사 난간 + 기둥
+RAIL_V = AUD_V1 - 0.12
+rail_a, rail_b = (row_front(0), RISE0 + 0.85), (AUD_U0 + 0.3, row_z(len(ROWS) - 1) + 0.85)
+prism_uz("T_rail", RAIL_V - 0.03, RAIL_V + 0.03, [rail_a, rail_b, (rail_b[0], rail_b[1] + 0.06), (rail_a[0], rail_a[1] + 0.06)], "metal")
+for k in range(0, len(ROWS), 2):
+    uu = row_u(k)
+    t = (uu - rail_a[0]) / (rail_b[0] - rail_a[0])
+    box(f"T_rail_post_{k}", uu - 0.02, uu + 0.02, RAIL_V - 0.02, RAIL_V + 0.02, row_z(k) - RISE / 2, rail_a[1] + t * (rail_b[1] - rail_a[1]), "metal", collide=False)
+
+
+def aud_floor(u):
+    """상영관 안 u 위치의 바닥(단) 높이"""
+    for k in range(len(ROWS)):
+        uc = row_u(k)
+        if u >= uc - ROW_PITCH / 2:
+            return 0.0 if u > uc + ROW_PITCH / 2 + (0.15 if k == 0 else 0) else row_z(k)
+    return row_z(len(ROWS) - 1)
+
+
+# 측벽 스피커 + 업라이트 글로우: 계단식 객석 높이를 따라 올라감 (뒤쪽에서 단 속에 묻히지 않게)
+for side, vv, fac in (("n", AUD_V0 + 0.08, "S"), ("s", AUD_V1 - 0.08, "N")):
+    for i in range(5):
+        cu = AUD_U1 - 3.5 - i * 3.0
+        sgn = 1 if side == "n" else -1
+        fz = aud_floor(cu + 1.5)
+        g0, g1 = fz + 1.3, min(fz + 5.5, AUD_H - 0.4)
+        sz = min(max(4.6, fz + 3.6), AUD_H - 1.2)
+        box(f"A_spk_{side}{i}", cu - 0.3, cu + 0.3, vv, vv + sgn * 0.35, sz, sz + 0.8, "black_plastic", collide=False)
+        plane(f"A_glow_{side}{i}", cu + 1.5, vv, (g0 + g1) / 2, 1.4, g1 - g0, fac, "glow_cone", offset=0.02)
+        box(f"A_uplight_{side}{i}", cu + 1.4, cu + 1.6, vv, vv + sgn * 0.12, g0 - 0.05, g0 + 0.05, "emit_warm", collide=False)
+
+# 좌석 메시: 검은 가죽 좌석 (두툼한 방석, 높은 등받이, 넓은 팔걸이 + 컵홀더). 공유 메시 → 클라이언트에서 인스턴싱
+def build_seat_mesh(name):
     bm = bmesh.new()
-    parts = []
 
     def cube(x0, x1, y0, y1, z0, z1, mi, tilt=0.0, pivot=None):
         r = bmesh.ops.create_cube(bm, size=1.0)
@@ -630,43 +682,39 @@ def build_seat_mesh(name, recliner=False):
         for f in {f for v in vs for f in v.link_faces}:
             f.material_index = mi
 
-    # 로컬: +X = 정면(스크린 쪽), Y = 좌우, Z = 위.  원점 = 좌석 바닥 중심
-    if not recliner:
-        w = 0.54
-        cube(-0.25, 0.25, -w / 2, w / 2, 0.36, 0.5, 0)                                  # 방석
-        cube(-0.34, -0.22, -w / 2, w / 2, 0.45, 1.05, 0, tilt=-0.17, pivot=(-0.28, 0, 0.45))  # 등받이
-        cube(-0.4, -0.3, -w / 2 + 0.03, w / 2 - 0.03, 0.85, 1.1, 1, tilt=-0.17, pivot=(-0.28, 0, 0.45))  # 헤드레스트(LOTTE)
-        cube(-0.3, 0.2, -w / 2 + 0.02, w / 2 - 0.02, 0.0, 0.36, 2)                       # 하부 쉘
-        for sy in (-1, 1):
-            cube(-0.3, 0.28, sy * (w / 2 + 0.04) - 0.04, sy * (w / 2 + 0.04) + 0.04, 0.0, 0.66, 2)  # 팔걸이
-            cube(0.16, 0.24, sy * (w / 2 + 0.04) - 0.045, sy * (w / 2 + 0.04) + 0.045, 0.62, 0.67, 3)  # 컵홀더
-    else:
-        w = 0.78
-        cube(-0.3, 0.3, -w / 2, w / 2, 0.3, 0.52, 0)
-        cube(-0.45, -0.25, -w / 2, w / 2, 0.45, 1.15, 0, tilt=-0.2, pivot=(-0.35, 0, 0.45))
-        cube(-0.5, -0.38, -w / 2 + 0.05, w / 2 - 0.05, 0.95, 1.2, 1, tilt=-0.2, pivot=(-0.35, 0, 0.45))
-        cube(0.3, 0.75, -w / 2 + 0.04, w / 2 - 0.04, 0.12, 0.38, 0)                      # 풋레스트
-        cube(-0.35, 0.3, -w / 2, w / 2, 0.0, 0.3, 2)
-        for sy in (-1, 1):
-            cube(-0.4, 0.35, sy * (w / 2 + 0.07) - 0.07, sy * (w / 2 + 0.07) + 0.07, 0.0, 0.68, 2)
+    def cyl(cx, cy, z0, z1, r, mi, seg=12):
+        res = bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=seg, radius1=r, radius2=r, depth=z1 - z0)
+        bmesh.ops.translate(bm, verts=res["verts"], vec=(cx, cy, (z0 + z1) / 2))
+        for f in {f for v in res["verts"] for f in v.link_faces}:
+            f.material_index = mi
+
+    # 로컬: +X = 정면(스크린 쪽), Y = 좌우, Z = 위. 원점 = 좌석 바닥 중심.  0 = 가죽, 1 = 검은 플라스틱
+    w, tilt, piv = 0.52, -0.2, (-0.32, 0, 0.42)
+    cube(-0.32, 0.12, -w / 2 + 0.02, w / 2 - 0.02, 0.0, 0.26, 1)                    # 받침
+    cube(-0.30, 0.28, -w / 2, w / 2, 0.26, 0.46, 0)                                   # 두툼한 방석
+    cube(0.26, 0.33, -w / 2 + 0.01, w / 2 - 0.01, 0.29, 0.44, 0)                      # 방석 앞 둥근 테
+    cube(-0.46, -0.24, -w / 2, w / 2, 0.42, 1.12, 0, tilt=tilt, pivot=piv)            # 등받이
+    cube(-0.44, -0.27, -w / 2 + 0.03, w / 2 - 0.03, 1.12, 1.2, 0, tilt=tilt, pivot=piv)  # 등받이 윗단
+    cube(-0.5, -0.45, -w / 2 + 0.02, w / 2 - 0.02, 0.38, 1.12, 1, tilt=tilt, pivot=piv)  # 뒤판
+    for sy in (-1, 1):
+        y = sy * SEAT_PITCH / 2                                                        # 옆 좌석과 같은 자리에 겹침(공유 팔걸이)
+        cube(-0.42, 0.26, y - 0.05, y + 0.05, 0.0, 0.62, 1)                           # 팔걸이 옆판
+        cube(-0.38, 0.36, y - 0.065, y + 0.065, 0.62, 0.70, 0)                        # 팔걸이 패드
+        cyl(0.33, y, 0.62, 0.74, 0.055, 1)                                             # 컵홀더
     me = bpy.data.meshes.new(name)
     uv = bm.loops.layers.uv.verify()
     for f in bm.faces:
-        n = f.normal
-        ax = max(range(3), key=lambda i: abs(n[i]))
         for loop in f.loops:
             c = loop.vert.co
-            loop[uv].uv = ((c.y + 0.5), (c.z if ax != 2 else c.x + 0.5)) if f.material_index == 1 else ((c.y if ax != 1 else c.x) / 0.6, c.z / 0.6)
+            loop[uv].uv = (c.y + 0.5, c.z)
     bm.to_mesh(me)
     bm.free()
-    for m in ("seat_fabric", "seat_logo", "blue_seat_shell", "black_plastic"):
+    for m in ("leather", "black_plastic"):
         me.materials.append(MATS[m])
     return me
 
 
-SEAT_ME = build_seat_mesh("seat_std")
-RECL_ME = build_seat_mesh("seat_recliner", recliner=True)
-SEAT_V0 = AISLE_V1 + 0.75
+SEAT_ME = build_seat_mesh("seat_leather")
 seat_count = 0
 
 
@@ -680,16 +728,18 @@ def place_seat(me, sid, row, num, u, v, z):
     seat_count += 1
 
 
-# A열: 리클라이너 10석 (2석씩 묶음)
-for i in range(10):
-    pair, side = divmod(i, 2)
-    v = SEAT_V0 + 0.4 + pair * 2.25 + side * 0.86
-    place_seat(RECL_ME, f"A{i + 1}", "A", i + 1, ROW_A_U, v, 0.0)
-# B~K열: 18석
+# 좌석 번호는 북쪽 벽에서부터 통로를 건너 이어서 매김 (A·B열 1~13, C열 1~17, D~K열 1~18 = 187석)
+# 남쪽 블록 첫 줄(C열)은 벽 옆 통로 입구 쪽 한 자리를 비움
 for k, r in enumerate(ROWS):
-    for i in range(18):
-        v = SEAT_V0 + i * SEAT_PITCH
-        place_seat(SEAT_ME, f"{r}{i + 1}", r, i + 1, row_u(k) - 0.05, v, row_z(k))
+    num = 0
+    for blk, (v0, n) in enumerate((BLK_N, BLK_S)):
+        if blk == 1 and k < S_BLOCK_FROM:
+            continue
+        if blk == 1 and k == S_BLOCK_FROM:
+            n -= 1
+        for i in range(n):
+            num += 1
+            place_seat(SEAT_ME, f"{r}{num}", r, num, row_u(k) - 0.05, v0 + (i + 0.5) * SEAT_PITCH, row_z(k))
 print("seats:", seat_count)
 
 # ---------------------------------------------------------------- 서쪽 포스터 복도 & 키오스크
@@ -715,9 +765,9 @@ box("EV_call", 2.24, 2.36, EV_V + 0.02, EV_V + 0.05, 1.0, 1.28, "metal", collide
 box("EV_call_up", 2.27, 2.33, EV_V + 0.05, EV_V + 0.055, 1.17, 1.22, "emit_white", collide=False)
 box("EV_call_dn", 2.27, 2.33, EV_V + 0.05, EV_V + 0.055, 1.06, 1.11, "emit_white", collide=False)
 # 엘리베이터에서 내리면 보이는 안내 사인 (4관 서쪽 벽)
-plane("SIGN_lotte_ev", AUD_U0 - TH, V(87), 2.55, 3.6, 0.9, "W", "sign_lotte", offset=0.02, merge=False)
-light("LIGHT_elev", 2.3, V(45) + 2.5, 3.4, intensity=4.0, distance=9.0, color=(1, 0.92, 0.82))
-light("LIGHT_westcor", 2.0, V(190), 3.4, intensity=4.0, distance=10.0, color=(1, 0.9, 0.8))
+plane("SIGN_lotte_ev", AUD_U0 - TH, V(87), 2.55, 3.6, 0.9, "W", "sign_lotte_r", offset=0.02, merge=False)   # 로비는 오른쪽(남쪽)
+for i, vv in enumerate([V(45) + 2.4, V(140), V(230), V(310)]):
+    light(f"LIGHT_westcor_{i}", 2.3, vv, COR_H + 0.55, kind="spot", angle=65, intensity=5.5, distance=7.0, color=(1, 0.92, 0.82))
 # 접속 시작 위치: 엘리베이터 앞, 남쪽(로비 방향)을 바라봄. yaw = atan2(dx, dz) 기준
 empty("SPAWN", 2.3, V(45) + 2.4, 0.0, {"spawn": 1, "yaw": 0.0})
 # 키오스크 열 (포토티켓 / 티켓 발권 / 바로팝콘 / 배터리 대여)
@@ -754,9 +804,10 @@ for j in range(5):
 plane("BS_sign", (BS_U0 + BS_U1) / 2, BS_V1, 2.35, 1.4, 0.18, "S", "sign_babyseat", offset=0.01, merge=True)
 # 5관 문 (복도 북쪽 끝)
 box("D_5_door", U(480), U(540), V(45) - 0.02, V(45) + 0.06, 0, 2.4, "steel_dark", collide=False)
-plane("SIGN_5", U(510), V(45) + 0.07, 2.8, 1.4, 0.7, "S", "sign_5", offset=0.0, merge=True)
+plane("SIGN_5", U(510), V(45) + 0.07, 2.8, 1.4, 0.7, "S", "sign_5_door", offset=0.0, merge=True)
 plane("SIGN_5_hall", U(510), V(265) - 0.1, 3.4, 1.4, 0.7, "S", "sign_5", offset=0.0, merge=True)
-light("LIGHT_5cor", U(510), V(150), 2.9, intensity=3.0, distance=9.0)
+for i, vv in enumerate([V(95), V(200)]):
+    light(f"LIGHT_5cor_{i}", U(510), vv, COR_H - 0.05, kind="spot", angle=65, intensity=4.5, distance=6.0)
 # 6관 알코브 동쪽 벽 + 6관 문 2개
 wall_with_openings("W_6", "v", U(555) + 0.15, V(265), V(395), 0, LOBBY_H, "wall_stone",
                    [(V(268) + 0.2, V(295), 2.4), (V(342), V(366), 2.4)])
@@ -771,7 +822,6 @@ box("W_in_lintel", KWANG_U1, BS_U0, V(262), FAC_V + 0.2, COR_H, LOBBY_H, "wall_s
 box("COL_p1", U(441), U(457), V(328), V(344), 0, LOBBY_H, "wall_stone")
 box("COL_p2", U(291), U(307), V(522), V(538), 0, LOBBY_H, "wall_stone")
 # 알코브 남쪽 = Sweet 블록 북벽
-light("LIGHT_alcove", U(480), V(330), 4.6, intensity=6.0, distance=14.0)
 
 # ---------------------------------------------------------------- Sweet# 매점 (4관 출구 왼쪽, 로비 북벽 동쪽 끝)
 # 남쪽(로비)을 보는 메인 카운터 + 4관 출구 쪽(동쪽)을 보는 픽업 카운터, 왼쪽에 통로 입구
@@ -823,8 +873,7 @@ plane("SW_menu", (SC_U0 + SC_U1) / 2, STRIP_V1 - 0.38, 2.575, 4.4, 0.69, "S", "m
 plane("SW_pier_poster", (SC_U1 + SW_U1) / 2, STRIP_V1, 2.45, 0.6, 0.86, "S", "posters", offset=0.01, merge=True, uv=poster_uv(2))
 box("SW_fridge", SC_U1 + 0.1, SW_U1 - 0.03, STRIP_V1, STRIP_V1 + 0.65, 0, 1.95, "kiosk_body")
 box("SW_fridge_door", SC_U1 + 0.16, SW_U1 - 0.09, STRIP_V1 + 0.65, STRIP_V1 + 0.67, 0.15, 1.75, "fridge_lit", collide=False)
-light("LIGHT_sweet", (SC_U0 + SC_U1) / 2, STRIP_V1 + 2.5, 4.4, intensity=8.0, distance=14.0, color=(1, 0.88, 0.75))
-light("LIGHT_sweet_in", (SC_U0 + SC_U1) / 2, STRIP_V0 + 1.8, 2.8, intensity=4.0, distance=8.0, color=(1, 0.75, 0.5))
+light("LIGHT_sweet_in", (SC_U0 + SC_U1) / 2, STRIP_V0 + 1.8, 2.8, intensity=3.0, distance=6.0, color=(1, 0.75, 0.5))
 # 줄서기 스탠션 (분홍 벨트)
 STN_ROWS = [(STRIP_V1 + 1.2, [SC_U0, SC_U0 + 1.6, SC_U0 + 3.2, SC_U1 - 0.3]), (STRIP_V1 + 2.4, [SC_U0, SC_U0 + 1.6, SC_U0 + 3.2])]
 for r, (vv, us) in enumerate(STN_ROWS):
@@ -847,7 +896,7 @@ for nm, a, b in (("w", PASS_U0, PASS_U0 + 0.02), ("e", PASS_U1 - 0.02, PASS_U1))
 box("PS_wains_back", PASS_U0, PASS_U1, PASS_V0, PASS_V0 + 0.02, 0, 0.95, "wood", collide=False)
 box("PS_door", PASS_U0 + 0.3, PASS_U1 - 0.3, PASS_V0, PASS_V0 + 0.04, 0, 2.1, "metal_gray", collide=False)
 box("PS_door_bar", PASS_U0 + 0.4, PASS_U1 - 0.4, PASS_V0 + 0.04, PASS_V0 + 0.08, 1.0, 1.05, "metal", collide=False)
-plane("PS_exit_sign", (PASS_U0 + PASS_U1) / 2, STRIP_V1, 3.45, 0.5, 0.25, "S", "sign_exit", offset=0.01, merge=True)
+plane("PS_exit_sign", (PASS_U0 + PASS_U1) / 2, STRIP_V1, 3.45, 0.5, 0.25, "S", "sign_exit_door", offset=0.01, merge=True)
 for i in range(3):
     uc = PASS_U0 + 0.3 + i * 0.4
     plane(f"PS_poster_{i}", uc, STRIP_V1, 2.85, 0.32, 0.46, "S", "posters", offset=0.01, merge=True, uv=poster_uv(3 + i))
@@ -908,7 +957,7 @@ SG_U, SG_V = BO_U0 - 4.0, V(450)
 box("SG_body", SG_U - 0.3, SG_U + 0.3, SG_V - 0.35, SG_V + 0.35, 0, 2.2, "black_plastic")
 plane("SG_scr", SG_U - 0.3, SG_V, 1.3, 0.62, 0.89, "W", "posters", offset=0.005, merge=True, uv=poster_uv(4))
 plane("SG_scr2", SG_U + 0.3, SG_V, 1.3, 0.62, 0.89, "E", "posters", offset=0.005, merge=True, uv=poster_uv(5))
-light("LIGHT_box", BO_U0 - 1.5, (BO_V0 + BO_V1) / 2, 4.4, intensity=8.0, distance=14.0, color=(1, 0.92, 0.85))
+light("LIGHT_box_in", (BO_U0 + BO_BACK) / 2, (BO_V0 + BO_MID) / 2, 2.6, intensity=2.0, distance=5.0, color=(1, 0.92, 0.85))
 
 # ---------------------------------------------------------------- 화장실 & 소화전
 WC_U0, WC_U1, WC_V0, WC_V1 = U(400), U(610), V(683), V(840)
@@ -926,10 +975,11 @@ for i in range(4):
     vv = V(760) + i * 1.3
     box(f"WC_stall_{i}", U(560), WC_U1, vv - 0.04, vv + 0.04, 0, 2.0, "wall_charcoal")
 box("WC_mirror", WC_U1 - 0.05, WC_U1, V(715), V(745), 1.1, 2.0, "metal", collide=False)
-plane("SIGN_wc", (U(478) + U(503)) / 2, WC_V0 - 0.16, 2.75, 2.2, 0.35, "S", "sign_wc", offset=0.0, merge=True)
+plane("SIGN_wc", (U(478) + U(503)) / 2, WC_V0 - 0.16, 2.75, 2.2, 0.35, "N", "sign_wc", offset=0.0, merge=True)
 box("WC_hydrant", U(420), U(445), WC_V0 - 0.35, WC_V0 - 0.15, 0.6, 1.8, "red_box")
-plane("WC_hydrant_label", U(432.5), WC_V0 - 0.35, 1.55, 1.6, 0.3, "S", "sign_hydrant", offset=0.005, merge=True)
-light("LIGHT_wc", (WC_U0 + WC_U1) / 2, (WC_V0 + WC_V1) / 2, 2.6, intensity=4.0, distance=10.0, color=(0.95, 0.97, 1.0))
+plane("WC_hydrant_label", U(432.5), WC_V0 - 0.35, 1.55, 1.6, 0.3, "N", "sign_hydrant", offset=0.005, merge=True)
+for i, uu in enumerate([U(450), U(560)]):
+    light(f"LIGHT_wc_{i}", uu, (WC_V0 + WC_V1) / 2, 2.75, kind="spot", angle=65, intensity=3.0, distance=6.0, color=(0.95, 0.97, 1.0))
 
 # ---------------------------------------------------------------- 석재 블록 (엘리베이터는 북서쪽 복도 끝)
 EL_U0, EL_U1, EL_V0, EL_V1 = U(285), U(400), V(690), V(840)
@@ -1095,23 +1145,24 @@ for i, cv in enumerate([54.6, 56.4, 58.2]):
 # 대기 벤치
 for i in range(3):
     box(f"BENCH_{i}", U(200) + i * 3.2, U(200) + i * 3.2 + 2.2, V(440), V(452), 0, 0.45, "wood", top_mat="wood")
-# 천장 다운라이트 (발광 원판)
-for i in range(7):
-    for j in range(8):
+# 천장 다운라이트 (발광 원판, 로비 전체 3.6m 격자) + 그 자리에서 아래로 비추는 스포트 조명
+# 조명은 다운라이트 한 칸 건너 하나씩(7.2m 간격). 천장 바로 아래 포인트 조명처럼 천장이 하얗게 뜨지 않고 바닥에 빛이 고인다
+DL_SKIP = [(EL_U0 - 0.3, EL_U1, EL_V0 - 0.3, EL_V1)]      # 석재 블록 위
+DL_SPOT_EXTRA = {(3, 9), (1, 5), (1, 8)}                   # 남쪽 로비 동쪽, 보이드 위 코퍼
+for i in range(6):
+    for j in range(11):
         cu = 1.5 + i * 3.6
         cv = V(355) + j * 3.6
-        if cu > U(380) or cv > SOUTH_V - 1:
+        if cu > U(380) or cv > SOUTH_V - 1 or any(a <= cu <= b and c <= cv <= d for a, b, c, d in DL_SKIP):
             continue
         zc = CF_H if CF_U0 < cu < CF_U1 and CF_V0 < cv < CF_V1 else LOBBY_H
         cylinder(f"DL_{i}_{j}", cu, cv, zc - 0.02, zc, 0.1, "emit_white", seg=10)
-for k, cv in enumerate([52.4, 56.0, 59.4]):
-    cylinder(f"DL_cf_{k}", (CF_U0 + CF_U1) / 2, cv, CF_H - 0.02, CF_H, 0.1, "emit_white", seg=10)
+        if (i % 2 == 0 and j % 2 == 0) or (i, j) in DL_SPOT_EXTRA:
+            light(f"LIGHT_lobby_{i}_{j}", cu, cv, zc - 0.05, kind="spot", angle=60, penumbra=0.55,
+                  intensity=13.0, distance=11.0 + (zc - LOBBY_H), color=(1, 0.92, 0.82))
 for (cu, cv) in [(U(410), V(300)), (U(500), V(300)), (U(500), V(370)), (U(410), V(370)), (U(450), V(665)), (U(560), V(665))]:
     cylinder(f"DL_e_{cu:.0f}_{cv:.0f}", cu, cv, LOBBY_H - 0.02, LOBBY_H, 0.1, "emit_white", seg=10)
-# 로비 조명 배치
-for i, (cu, cv) in enumerate([(5, V(400)), (12, V(400)), (18, V(420)), (5, V(560)), (12, V(600)), (6, V(780)), (12, V(820)), (20, V(670))]):
-    light(f"LIGHT_lobby_{i}", cu, cv, 4.6, intensity=10.0, distance=16.0, color=(1, 0.92, 0.82))
-light("LIGHT_led", LED_CU, SOUTH_V - 3, 3.5, intensity=3.0, distance=8.0, color=(0.6, 0.6, 1.0))
+    light(f"LIGHT_e_{cu:.0f}_{cv:.0f}", cu, cv, LOBBY_H - 0.05, kind="spot", angle=60, penumbra=0.55, intensity=13.0, distance=11.0, color=(1, 0.92, 0.82))
 empty("ZONE_LOBBY", 19, 33, 2.5, {"zone": "lobby", "su": 40, "sv": 66, "sz": 5})
 
 # ---------------------------------------------------------------- 병합 & 내보내기
@@ -1166,13 +1217,17 @@ if "--render" in ARGS:
     world.use_nodes = True
     world.node_tree.nodes["Background"].inputs[0].default_value = (0.03, 0.03, 0.035, 1)
     scene.world = world
-    # 미리보기 전용: LIGHT_ 엠프티 → 실제 포인트 라이트
+    # 미리보기 전용: LIGHT_ 엠프티 → 실제 라이트 (spot은 아래를 향함: Blender 스포트 기본 방향이 -Z)
     for o in list(COL.objects):
         if o.type == "EMPTY" and "light" in o.keys():
-            ld = bpy.data.lights.new(o.name + "_L", "POINT")
+            spot = o["light"] == "spot"
+            ld = bpy.data.lights.new(o.name + "_L", "SPOT" if spot else "POINT")
             ld.color = tuple(o["color"])[:3]
-            ld.energy = float(o["intensity"]) * 60
+            ld.energy = float(o["intensity"]) * (120 if spot else 60)
             ld.shadow_soft_size = 0.3
+            if spot:
+                ld.spot_size = math.radians(float(o.get("angle", 55))) * 2
+                ld.spot_blend = float(o.get("penumbra", 0.6))
             lo = bpy.data.objects.new(o.name + "_L", ld)
             lo.location = o.location
             scene.collection.objects.link(lo)

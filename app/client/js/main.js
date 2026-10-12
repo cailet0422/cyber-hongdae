@@ -376,10 +376,12 @@ function buildUi() {
   bindRange('subSize', 'subSize', ['subVal', (v) => Math.round(v * 100) + '%']);
   bindRange('sens', 'sens');
   bindRange('maxAvatars', 'maxAvatars', ['maxAvVal', (v) => v + '명']);
-  for (const k of ['showNames', 'showBubbles', 'showSubs']) {
+  for (const k of ['showNames', 'showBubbles', 'showSubs', 'mouseLock']) {
     $(k).checked = prefs[k];
-    $(k).onchange = () => (prefs[k] = $(k).checked);
+    $(k).onchange = () => { prefs[k] = $(k).checked; if (k === 'mouseLock' && !prefs[k]) player.unlockMouse(); };
   }
+  $('mouseLockRow').classList.toggle('hidden', isTouch);
+  player.onLockChange = (locked) => { if (locked) toast('🖱 마우스로 시점 조작 · Alt를 누르면 커서가 나와요', 2400); };
   const qs = [...$('quality').children];
   const markQ = () => qs.forEach((b) => b.classList.toggle('sel', b.dataset.q === prefs.quality));
   qs.forEach((b) => (b.onclick = () => { prefs.quality = b.dataset.q; markQ(); applyQuality(); }));
@@ -440,6 +442,7 @@ function buildUi() {
 function togglePanel(id) {
   for (const p of ['emotePanel', 'settings', 'stickBar']) if (p !== id && !(p === 'stickBar' && localAvatar.stick.on)) $(p).classList.add('hidden');
   $(id).classList.toggle('hidden');
+  if (!$(id).classList.contains('hidden')) player.unlockMouse();   // 메뉴를 열면 클릭할 수 있게 커서를 꺼냄
 }
 
 function buildStickBar() {

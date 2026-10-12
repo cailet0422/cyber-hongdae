@@ -42,6 +42,8 @@ export class Player {
   _bindInput() {
     const typing = () => /INPUT|TEXTAREA/.test(document.activeElement?.tagName);
     addEventListener('keydown', (e) => {
+      // Alt: 숨긴 마우스 커서 꺼내기 (브라우저 메뉴로 포커스가 가지 않게 막음)
+      if (e.key === 'Alt') { e.preventDefault(); this.unlockMouse(); return; }
       if (typing()) return;
       this.keys.add(e.code);
       if (e.code === 'Space') e.preventDefault();
@@ -50,13 +52,30 @@ export class Player {
     addEventListener('blur', () => this.keys.clear());
 
     let drag = null;
+    // 마우스 숨기기: 화면을 클릭하면 커서를 숨기고 고정 → 마우스를 움직이기만 해도 시점이 돌아감
+    this.locked = false;
+    document.addEventListener('pointerlockchange', () => {
+      this.locked = document.pointerLockElement === this.canvas;
+      drag = null;
+      this.onLockChange?.(this.locked);
+    });
+    document.addEventListener('mousemove', (e) => {
+      if (!this.locked) return;
+      const s = 0.0024 * this.prefs.sens;
+      this.camYaw -= e.movementX * s;
+      this.camPitch = THREE.MathUtils.clamp(this.camPitch - e.movementY * s, -1.35, 1.2);
+    });
+
     this.canvas.addEventListener('pointerdown', (e) => {
+      // 커서 숨기기 요청. 잠금이 안 되는 환경이면 아래 드래그 방식으로 그대로 시점을 돌릴 수 있음
+      if (e.pointerType === 'mouse' && this.enabled && this.prefs.mouseLock && !this.locked) this.lockMouse();
+      if (this.locked) return;
       if (e.pointerType === 'touch' && this._joyId === e.pointerId) return;
       drag = { id: e.pointerId, x: e.clientX, y: e.clientY };
-      this.canvas.setPointerCapture(e.pointerId);
+      try { this.canvas.setPointerCapture(e.pointerId); } catch {}   // 잠금 요청 중이면 실패할 수 있음 (드래그는 그대로 동작)
     });
     this.canvas.addEventListener('pointermove', (e) => {
-      if (!drag || drag.id !== e.pointerId) return;
+      if (this.locked || !drag || drag.id !== e.pointerId) return;
       const s = 0.005 * this.prefs.sens * (e.pointerType === 'touch' ? 1.4 : 1);
       this.camYaw -= (e.clientX - drag.x) * s;
       this.camPitch = THREE.MathUtils.clamp(this.camPitch - (e.clientY - drag.y) * s, -1.35, 1.2);
@@ -69,6 +88,14 @@ export class Player {
       this.camDist = THREE.MathUtils.clamp(this.camDist * (e.deltaY > 0 ? 1.12 : 0.89), 1.2, 9);
       e.preventDefault();
     }, { passive: false });
+  }
+
+  lockMouse() {
+    if (this.locked || !this.canvas.requestPointerLock) return;
+    try { this.canvas.requestPointerLock()?.catch?.(() => {}); } catch {}
+  }
+  unlockMouse() {
+    if (document.pointerLockElement) document.exitPointerLock();
   }
 
   bindJoystick(el, knob) {

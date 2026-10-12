@@ -4,7 +4,7 @@ import math
 import os
 import random
 
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "textures")
 os.makedirs(OUT, exist_ok=True)
@@ -262,18 +262,21 @@ def menu_boards():
 
 
 def lotte_sign():
-    W, H = 2048, 512
-    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    f = font("arialbd.ttf", 200)
-    d.text((40, 30), "LOTTE CINEMA", font=f, fill=(225, 25, 35, 255))
-    f2 = font("malgunbd.ttf", 120)
-    d.ellipse([60, 300, 170, 410], outline=(240, 240, 240, 255), width=10)
-    d.polygon([(95, 355), (135, 325), (135, 385)], fill=(240, 240, 240, 255))
-    d.text((190, 278), "10F", font=f2, fill=(240, 240, 240, 255))
-    d.line([440, 300, 440, 430], fill=(240, 240, 240, 255), width=8)
-    d.text((470, 278), "4/5/6관", font=f2, fill=(240, 240, 240, 255))
-    save(img, "sign_lotte.png")
+    # LOTTE CINEMA ◁ 10F | 4/5/6관 - 화살표 방향별 두 장 (sign_lotte: 왼쪽, sign_lotte_r: 오른쪽)
+    for name, right in (("sign_lotte.png", False), ("sign_lotte_r.png", True)):
+        W, H = 2048, 512
+        img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        d = ImageDraw.Draw(img)
+        f = font("arialbd.ttf", 200)
+        d.text((40, 30), "LOTTE CINEMA", font=f, fill=(225, 25, 35, 255))
+        f2 = font("malgunbd.ttf", 120)
+        d.ellipse([60, 300, 170, 410], outline=(240, 240, 240, 255), width=10)
+        tri = [(145, 355), (105, 325), (105, 385)] if right else [(95, 355), (135, 325), (135, 385)]
+        d.polygon(tri, fill=(240, 240, 240, 255))
+        d.text((190, 278), "10F", font=f2, fill=(240, 240, 240, 255))
+        d.line([440, 300, 440, 430], fill=(240, 240, 240, 255), width=8)
+        d.text((470, 278), "4/5/6관", font=f2, fill=(240, 240, 240, 255))
+        save(img, name)
 
 
 def down_sign():
@@ -409,19 +412,39 @@ def vertical_text(name, text, fg, w=256, h=1280, size=190):
     save(img, name)
 
 
+def _runner(d, cx, cy, fg):
+    # 오른쪽으로 달리는 사람 (몸통이 앞으로 기울고 팔다리를 크게 벌림)
+    w = 20
+    d.ellipse([cx + 8, cy - 92, cx + 56, cy - 44], fill=fg)
+    d.line([(cx + 22, cy - 38), (cx - 8, cy + 30)], fill=fg, width=w + 4)                        # 몸통
+    d.line([(cx + 16, cy - 26), (cx + 52, cy - 2), (cx + 78, cy - 30)], fill=fg, width=w, joint="curve")   # 앞팔
+    d.line([(cx + 16, cy - 26), (cx - 22, cy - 18), (cx - 44, cy + 6)], fill=fg, width=w, joint="curve")  # 뒷팔
+    d.line([(cx - 8, cy + 30), (cx + 36, cy + 52), (cx + 30, cy + 98)], fill=fg, width=w, joint="curve")  # 앞다리
+    d.line([(cx - 8, cy + 30), (cx - 30, cy + 74), (cx - 78, cy + 80)], fill=fg, width=w, joint="curve")  # 뒷다리
+
+
 def exit_sign():
+    # 비상구 표시: 사람과 화살표가 같은 방향 (→), 반대 방향(←), 문 위에 다는 화살표 없는 문 그림
     W, H = 512, 256
-    img = Image.new("RGB", (W, H), (20, 190, 90))
-    d = ImageDraw.Draw(img)
-    d.rectangle([12, 12, W - 12, H - 12], outline=(240, 255, 240), width=8)
-    cx = 150
-    d.ellipse([cx - 24, 40, cx + 24, 88], fill=(250, 255, 250))
-    d.line([cx, 90, cx - 20, 160, cx - 60, 210], fill=(250, 255, 250), width=22)
-    d.line([cx - 20, 160, cx + 30, 200, cx + 40, 230], fill=(250, 255, 250), width=22)
-    d.line([cx - 50, 120, cx + 40, 120], fill=(250, 255, 250), width=18)
-    d.polygon([(300, 90), (400, 128), (300, 166)], fill=(250, 255, 250))
-    d.rectangle([230, 112, 310, 144], fill=(250, 255, 250))
+    fg = (250, 255, 250)
+
+    def base():
+        img = Image.new("RGB", (W, H), (20, 190, 90))
+        d = ImageDraw.Draw(img)
+        d.rectangle([12, 12, W - 12, H - 12], outline=(240, 255, 240), width=8)
+        return img, d
+
+    img, d = base()
+    _runner(d, 150, 132, fg)
+    d.rectangle([262, 114, 372, 148], fill=fg)
+    d.polygon([(368, 84), (452, 131), (368, 178)], fill=fg)
     save(img, "sign_exit.jpg")
+    save(ImageOps.mirror(img), "sign_exit_l.jpg")
+    img, d = base()
+    d.rectangle([318, 46, 440, 216], outline=fg, width=12)       # 열린 문
+    d.polygon([(330, 58), (392, 76), (392, 226), (330, 206)], fill=fg)
+    _runner(d, 190, 132, fg)
+    save(img, "sign_exit_door.jpg")
 
 
 def kiosk_screens():
@@ -504,6 +527,7 @@ def baby_seat_sign():
 def theater_number():
     text_sign("sign_4.png", "4관", (255, 255, 255, 255), None, 512, 256, size=170)
     text_sign("sign_5.png", "5관 ↑", (255, 255, 255, 255), None, 512, 256, size=150)
+    text_sign("sign_5_door.png", "5관", (255, 255, 255, 255), None, 512, 256, size=170)
     text_sign("sign_6.png", "6관", (255, 255, 255, 255), None, 512, 256, size=170)
     text_sign("sign_wc.png", "화장실  RESTROOM", (255, 255, 255, 255), None, 1024, 160, size=80)
     text_sign("sign_hydrant.png", "소화전", (255, 255, 255), (200, 20, 20), 512, 256, size=120)

@@ -21,7 +21,7 @@ The host opens a server from their own PC with one click. Friends then **just op
 ## ✨ Features
 
 - **3D cinema** built procedurally with a Blender script.
-  - **Screen 4**: big screen, purple-LED subwoofer cubes, stone acoustic walls with up-lights, graffiti mural, 190 stadium seats.
+  - **Screen 4**: big screen, purple-LED subwoofer cubes, stone acoustic walls with up-lights, graffiti mural, 187 black leather stadium seats.
   - **Lobby**: snack bar with menu boards, kiosks, window bar, lobby LED wall, poster light boxes, baby-seat shelf, entrances to Screens 5 and 6, restroom.
 - **Synchronized playback**: everyone sees the same frame, and late joiners catch up automatically.
 - **Almost any video source**

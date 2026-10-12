@@ -5,6 +5,11 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MeshBVH } from 'three-mesh-bvh';
 
 const LIGHT_SCALE = 4.5;
+// 조명 풀: 종류별 고정 개수(셰이더 재컴파일 방지). 가까운 조명 몇 개만 켜고, 나머지 칸은 꺼지는 조명이 서서히 사라질 여유
+const POOL = { spot: 10, point: 4 };
+const SPARE = 2;          // 종류별로 꺼지는 중인 조명에 남겨 두는 칸
+const FADE = 3;           // 초당 밝기 변화 (1/FADE초에 완전히 켜지거나 꺼짐)
+const KEEP_BONUS = 0.75;  // 이미 켜진 조명은 점수를 깎아 경계에서 켰다 껐다 반복하지 않게 함
 
 export class World {
   constructor(scene, renderer) {
@@ -20,7 +25,7 @@ export class World {
     this.wallBVH = null;
     this.groundBVH = null;
     this.theaterDim = 0; // 0: 밝음, 1: 상영 중 어두움
-    this.pool = [];
+    this.slots = [];
   }
 
   async load(url, onProgress) {
@@ -44,8 +49,11 @@ export class World {
       if (ud.spawn) { o.getWorldPosition(this.spawn); if (typeof ud.yaw === 'number') this.spawnYaw = ud.yaw; }
       if (ud.light) {
         this.lightDefs.push({
+          kind: ud.light === 'spot' ? 'spot' : 'point',
           pos: o.getWorldPosition(new THREE.Vector3()), color: new THREE.Color().fromArray(ud.color).convertLinearToSRGB(),
           intensity: ud.intensity, distance: ud.distance, theater: !!ud.theater,
+          angle: THREE.MathUtils.degToRad(ud.angle || 55), penumbra: ud.penumbra ?? 0.6,
+          w: 0, want: false, slot: null,
         });
       }
       if (ud.zone) {
@@ -95,7 +103,7 @@ export class World {
     return this;
   }
 
-  // 같은 지오메트리를 쓰는 메시(좌석 190개 등)를 InstancedMesh로 합쳐 드로우콜을 줄인다
+  // 같은 지오메트리를 쓰는 메시(좌석 187개 등)를 InstancedMesh로 합쳐 드로우콜을 줄인다
   _instance(root) {
     const byGeo = new Map();
     root.traverse((o) => {
@@ -114,44 +122,93 @@ export class World {
     }
   }
 
-  // 조명 풀: 고정 개수의 포인트 라이트를 카메라 근처 조명 위치에 재배치 (셰이더 재컴파일 방지)
-  _setupLights(count = 10) {
-    this.hemi = new THREE.HemisphereLight(0xcfd6ff, 0x3a3028, 0.6);
+  // 조명 풀: 고정 개수의 스포트/포인트 라이트를 카메라 근처 조명 자리에 배정한다.
+  // 배정이 바뀔 때 밝기를 0으로 끊지 않고, 각 조명이 서서히 켜지고 꺼지게 해서 달릴 때 깜빡이지 않게 한다.
+  _setupLights() {
+    this.hemi = new THREE.HemisphereLight(0xcfd6ff, 0x3a3028, 0.85);
     this.scene.add(this.hemi);
-    for (let i = 0; i < count; i++) {
-      const l = new THREE.PointLight(0xffffff, 0, 10, 1.6);
-      l.userData.target = 0;
-      this.scene.add(l);
-      this.pool.push(l);
+    this.slots = [];
+    for (const kind of ['spot', 'point']) {
+      for (let i = 0; i < POOL[kind]; i++) {
+        const l = kind === 'spot' ? new THREE.SpotLight(0xffffff, 0, 10, 0.9, 0.6, 1.6) : new THREE.PointLight(0xffffff, 0, 10, 1.6);
+        this.scene.add(l);
+        if (kind === 'spot') this.scene.add(l.target);
+        this.slots.push({ kind, light: l, def: null });
+      }
     }
-    this._lightT = 0;
+    this._selT = 0;
+  }
+
+  _assign(slot, d) {
+    if (slot.def) { slot.def.slot = null; slot.def.w = 0; }
+    slot.def = d;
+    d.slot = slot;
+    d.w = 0;
+    const l = slot.light;
+    l.position.copy(d.pos);
+    l.color.copy(d.color);
+    l.distance = d.distance * 1.4;
+    l.intensity = 0;
+    if (slot.kind === 'spot') {
+      l.angle = d.angle;
+      l.penumbra = d.penumbra;
+      l.target.position.set(d.pos.x, d.pos.y - 10, d.pos.z);
+      l.target.updateMatrixWorld();
+    }
+  }
+
+  // 상영관 안에서는 상영관 조명만, 밖에서는 상영관 조명을 빼고 고른다 (그림자가 없어 벽 너머로 새지 않게)
+  _select(camPos, inTheater) {
+    for (const d of this.lightDefs) d.want = false;
+    for (const kind of ['spot', 'point']) {
+      const ranked = [];
+      for (const d of this.lightDefs) {
+        if (d.kind !== kind || d.theater !== inTheater) continue;
+        let k = d.pos.distanceToSquared(camPos) / (d.distance * d.distance);
+        if (d.slot) k *= KEEP_BONUS;
+        ranked.push([k, d]);
+      }
+      ranked.sort((a, b) => a[0] - b[0]);
+      const want = ranked.slice(0, POOL[kind] - SPARE).map((x) => x[1]);
+      for (const d of want) d.want = true;
+      const slots = this.slots.filter((s) => s.kind === kind);
+      for (const d of want) {
+        if (d.slot) continue;
+        // 빈 칸 → 없으면 원하지 않는 조명 중 가장 어두워진 칸을 넘겨받음
+        let slot = slots.find((s) => !s.def);
+        if (!slot) {
+          const free = slots.filter((s) => !s.def.want).sort((a, b) => a.def.w - b.def.w);
+          slot = free[0];
+        }
+        if (slot) this._assign(slot, d);
+      }
+    }
   }
 
   updateLights(dt, camPos, inTheater) {
-    this._lightT -= dt;
-    if (this._lightT <= 0) {
-      this._lightT = 0.4;
-      const sorted = this.lightDefs
-        .map((d) => ({ d, k: d.pos.distanceToSquared(camPos) / (d.distance * d.distance) }))
-        .sort((a, b) => a.k - b.k)
-        .slice(0, this.pool.length);
-      this.pool.forEach((l, i) => {
-        const s = sorted[i];
-        if (!s) { l.userData.def = null; return; }
-        if (l.userData.def !== s.d) { l.userData.def = s.d; l.position.copy(s.d.pos); l.color.copy(s.d.color); l.distance = s.d.distance * 1.4; l.intensity = 0; }
-      });
+    this._selT -= dt;
+    if (this._selT <= 0) {
+      this._selT = 0.15;
+      this._select(camPos, !!inTheater);
     }
     const dim = this.theaterDim;
-    for (const l of this.pool) {
-      const d = l.userData.def;
-      let target = 0;
-      if (d) {
-        target = d.intensity * LIGHT_SCALE;
-        if (d.theater && d.color.b < 0.9) target *= 1 - 0.85 * dim; // 상영 중 객석 조명 어둡게
+    const step = Math.min(1, dt * FADE);
+    for (const s of this.slots) {
+      const d = s.def;
+      if (!d) continue;
+      d.w = d.want ? Math.min(1, d.w + step) : Math.max(0, d.w - step);
+      if (!d.want && d.w === 0) {
+        d.slot = null;
+        s.def = null;
+        s.light.intensity = 0;
+        continue;
       }
-      l.intensity += (target - l.intensity) * Math.min(1, dt * 4);
+      let target = d.intensity * LIGHT_SCALE;
+      if (d.theater && d.color.b < 0.9) target *= 1 - 0.85 * dim; // 상영 중 객석 조명 어둡게
+      const e = d.w * d.w * (3 - 2 * d.w);                          // 부드러운 켜짐/꺼짐
+      s.light.intensity = target * e;
     }
-    const hemiTarget = inTheater ? 0.3 - 0.22 * dim : 0.6;
+    const hemiTarget = inTheater ? 0.35 - 0.25 * dim : 0.85;
     this.hemi.intensity += (hemiTarget - this.hemi.intensity) * Math.min(1, dt * 2);
   }
 
