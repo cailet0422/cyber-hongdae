@@ -1,6 +1,6 @@
 {
   "name": "cyber-hongdae",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "사이버 홍대입구 - 롯데시네마 홍대입구 10층과 4관 광음시네마를 재현한 온라인 단체관람 3D 공간",
   "main": "dashboard/main.js",
   "private": true,
@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@pixiv/three-vrm": "^3.5.5",
+    "electron-updater": "^6.8.9",
     "express": "^5.1.0",
     "hls.js": "1.6.13",
     "iconv-lite": "^0.7.0",
@@ -95,6 +96,14 @@
       "deleteAppDataOnUninstall": false,
       "installerIcon": "dashboard/renderer/icon.ico",
       "uninstallerIcon": "dashboard/renderer/icon.ico"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "cailet0422",
+        "repo": "cyber-hongdae",
+        "releaseType": "release"
+      }
+    ]
   }
 }

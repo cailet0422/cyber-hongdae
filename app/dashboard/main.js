@@ -6,11 +6,13 @@ const QRCode = require('qrcode');
 const { CinemaServer } = require('../server');
 const { SUB_EXT, VIDEO_EXT, IMAGE_EXT } = require('../server/media');
 const { makeAdminApi, ADMIN_EVENTS } = require('../server/admin-api');
+const { createUpdater } = require('./updater');
 
 // 설치판: 설치 폴더는 쓰기 권한이 없을 수 있으므로 사용자 폴더(%APPDATA%)에 저장
 const DATA_DIR = process.env.CYBER_DATA_DIR || (app.isPackaged ? path.join(app.getPath('userData'), 'data') : path.resolve(__dirname, '..', 'data'));
 let win = null;
 let server = null;
+let updater = null;
 
 function send(ch, data) { if (win && !win.isDestroyed()) win.webContents.send('evt', ch, data); }
 
@@ -18,6 +20,12 @@ function createServer() {
   server = new CinemaServer({ dataDir: DATA_DIR });
   for (const ev of ADMIN_EVENTS) server.on(ev, (d) => send(ev, d));
   server.on('log', (l) => console.log(l));
+  updater = createUpdater({
+    send,
+    isServerRunning: () => server.running,
+    getEnabled: () => server.config.autoUpdate !== false,
+    log: (m) => server.log(m),
+  });
   buildApi();
 }
 
@@ -44,6 +52,22 @@ function buildApi() {
     openDataDir: () => shell.openPath(DATA_DIR),
     copy: (text) => clipboard.writeText(String(text)),
     qr: (text) => QRCode.toDataURL(String(text), { margin: 1, width: 360, color: { dark: '#111111', light: '#ffffff' } }),
+    // 자동 업데이트
+    updateState: () => ({ ...updater.state, enabled: server.config.autoUpdate !== false }),
+    checkUpdate: () => updater.check(),
+    setAutoUpdate: (on) => { server.setConfig({ autoUpdate: !!on }); updater.setEnabled(); return !!on; },
+    installUpdate: async () => {
+      if (updater.state.status !== 'ready') return false;
+      if (server.running) {
+        const r = await dialog.showMessageBox(win, {
+          type: 'question', buttons: ['서버 닫고 업데이트', '나중에'], defaultId: 0, cancelId: 1,
+          title: '업데이트', message: `새 버전(${updater.state.latest})을 설치하려면 프로그램을 다시 시작해야 합니다.\n서버가 열려 있어 접속자 모두의 연결이 끊어집니다.`,
+        });
+        if (r.response !== 0) return false;
+        await server.stop();
+      }
+      return updater.install();
+    },
   });
 }
 

@@ -127,4 +127,5 @@ pre#logs { max-height: 300px; overflow: auto; font-size: 12px; color: var(--dim)
 .stick-cfg { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
 .stick-cfg .s { background: var(--panel2); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
 
+.update-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #1d3b2a; border: 1px solid #2ecc71; color: #c9f7dc; border-radius: 12px; padding: 10px 14px; margin-bottom: 16px; }
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #000; border: 1px solid var(--line); padding: 12px 20px; border-radius: 12px; z-index: 99; box-shadow: 0 10px 40px rgba(0,0,0,.6); }

@@ -23,6 +23,10 @@ const api = makeAdminApi(server, {
   openDataDir: () => null,
   // 웹 모드에서는 파일 대화상자 대신 경로를 직접 입력받는다 (shim.js에서 처리)
   pickFiles: () => [],
+  updateState: () => ({ status: 'dev', version: require('../package.json').version }),
+  checkUpdate: () => null,
+  setAutoUpdate: () => null,
+  installUpdate: () => false,
   pickFolder: () => null,
 });
 

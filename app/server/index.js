@@ -33,6 +33,7 @@ const DEFAULT_CONFIG = {
   names: ['유이', '미오', '리츠', '무기', '아즈사', '우이', '노도카', '준', '사와코', '스미레', '나오'],
   chat: { slowMode: 0, maxLen: 200, enabled: true },
   customModels: { enabled: true, maxMB: 60 },
+  autoUpdate: true,
   media: { maxHeight: 1080, ytSubs: true, subLangs: 'ko.*,ko,en.*,en,ja', prefetch: 3 },
   sign4: {
     hall: '4관', floor: '10층', autoTitle: true, title: '', message: '관람고객님은 지금 입장하시기 바랍니다.',

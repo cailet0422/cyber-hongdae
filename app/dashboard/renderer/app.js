@@ -389,6 +389,37 @@ $('cfgSave').onclick = async () => {
 };
 $('openData').onclick = () => call('openDataDir');
 
+// ------------------------------------------------------------------ 자동 업데이트
+function renderUpdate(u) {
+  if (!u) return;
+  $('verCur').textContent = 'v' + u.version;
+  const pct = Math.round((u.progress || 0) * 100);
+  const text = {
+    dev: '개발 버전 (설치판에서만 자동 업데이트)',
+    idle: '',
+    checking: '새 버전 확인 중…',
+    latest: '✅ 최신 버전입니다',
+    downloading: `⬇ 새 버전 v${u.latest} 내려받는 중 ${pct}%`,
+    ready: `🎉 새 버전 v${u.latest} 준비 완료 — 프로그램을 닫으면 자동으로 설치됩니다`,
+    error: '⚠ 업데이트 확인 실패: ' + (u.error || ''),
+  }[u.status] || '';
+  $('verStatus').textContent = text;
+  $('verProg').classList.toggle('hidden', u.status !== 'downloading');
+  $('verProgBar').style.width = pct + '%';
+  $('verInstall').classList.toggle('hidden', u.status !== 'ready');
+  $('verCheck').disabled = u.status === 'dev' || u.status === 'checking' || u.status === 'downloading';
+  if (u.enabled != null) $('verAuto').checked = u.enabled;
+  $('updateBanner').classList.toggle('hidden', u.status !== 'ready');
+  $('updateBannerText').textContent = `🎉 새 버전 v${u.latest}이(가) 준비되었습니다. 지금 설치하거나, 프로그램을 닫을 때 자동으로 설치됩니다.`;
+}
+const installUpdate = async () => { const ok = await call('installUpdate'); if (!ok) toast('업데이트를 나중에 설치합니다'); };
+$('verCheck').onclick = () => call('checkUpdate');
+$('verInstall').onclick = installUpdate;
+$('updateBannerBtn').onclick = installUpdate;
+$('verAuto').onchange = async () => { await call('setAutoUpdate', $('verAuto').checked); toast($('verAuto').checked ? '자동 업데이트를 켰습니다' : '자동 업데이트를 껐습니다'); };
+bridge.on('update', renderUpdate);
+call('updateState').then(renderUpdate).catch(() => {});
+
 // ------------------------------------------------------------------ 이벤트 수신
 function renderAll() {
   S.playback._recv = Date.now();

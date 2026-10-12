@@ -24,6 +24,10 @@
   </aside>
 
   <main>
+    <div id="updateBanner" class="update-banner hidden">
+      <span id="updateBannerText"></span>
+      <button class="btn small primary" id="updateBannerBtn">지금 재시작하고 업데이트</button>
+    </div>
     <!-- ================= 홈 / 서버 ================= -->
     <section id="tab-home" class="tab">
       <h1>서버</h1>
@@ -239,6 +243,19 @@
       <div class="card">
         <h2>응원봉 색 (방과후 티타임 5인)</h2>
         <div id="stickCfg" class="stick-cfg"></div>
+      </div>
+      <div class="card">
+        <h2>프로그램 업데이트</h2>
+        <div class="row gap wrap">
+          <span>현재 버전 <b id="verCur"></b></span>
+          <span id="verStatus" class="muted"></span>
+        </div>
+        <div class="prog hidden" id="verProg"><i id="verProgBar"></i></div>
+        <div class="row gap wrap" style="margin-top:10px">
+          <button class="btn" id="verCheck">업데이트 확인</button>
+          <button class="btn primary hidden" id="verInstall">지금 재시작하고 업데이트</button>
+          <label class="check"><input type="checkbox" id="verAuto"> 새 버전 자동으로 받기 (프로그램을 닫을 때 설치)</label>
+        </div>
       </div>
       <div class="row gap">
         <button class="btn primary" id="cfgSave">설정 저장</button>
