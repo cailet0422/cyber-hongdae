@@ -98,6 +98,32 @@ $('entryModelClear').onclick = () => { pendingModel = null; prefs.customModel = 
 if (prefs.customModel) { $('entryModelStatus').textContent = `지난번 모델: ${prefs.customModel.name}`; $('entryModelClear').classList.remove('hidden'); }
 $('enterBtn').onclick = enter;
 
+// ------------------------------------------------------------------ 모바일: 전체화면 + 가로 고정
+const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
+const canFullscreen = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
+const portrait = matchMedia('(orientation: portrait)');
+let portraitOk = false; // '세로로 계속하기'를 고르면 가로로 고정하지 않음
+
+// 브라우저가 터치(클릭) 없이는 전체화면을 막으므로 터치 이벤트 안에서 불러야 함
+async function goFullscreen(force) {
+  if (!isTouch || !(prefs.fullscreen || force)) return;
+  const el = document.documentElement;
+  try {
+    if (!fsEl()) await (el.requestFullscreen ? el.requestFullscreen({ navigationUI: 'hide' }) : el.webkitRequestFullscreen?.());
+    if (!portraitOk) await screen.orientation?.lock?.('landscape');   // 안드로이드: 전체화면일 때만 고정 가능
+  } catch {}   // 아이폰처럼 지원하지 않으면 세로 화면 안내로 대신함
+}
+function exitFullscreen() {
+  try { screen.orientation?.unlock?.(); } catch {}
+  if (fsEl()) (document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen?.())?.catch?.(() => {});
+}
+const updateRotateHint = () => $('rotateHint').classList.toggle('hidden', !(isTouch && portrait.matches && !portraitOk));
+portrait.addEventListener('change', updateRotateHint);
+updateRotateHint();
+$('rotateGo').classList.toggle('hidden', !canFullscreen);
+$('rotateGo').onclick = () => { portraitOk = false; goFullscreen(true); };
+$('rotateSkip').onclick = () => { portraitOk = true; updateRotateHint(); };
+
 // ------------------------------------------------------------------ 게임 상태
 const net = new Net();
 let audioCtx = null;
@@ -109,6 +135,7 @@ const remotes = new Map(); // id → { info, avatar, target, yaw, anim, seat }
 let cfg = null;
 
 async function enter() {
+  goFullscreen();   // 입장 버튼 터치로 전체화면 + 가로 고정 (모바일)
   $('enterBtn').disabled = true;
   $('entryErr').textContent = '';
   try {
@@ -166,7 +193,7 @@ async function start(w) {
   for (const u of w.users) addRemote(u);
   updateOnline();
   for (const m of w.chat) chatLine(m, false);
-  chatLine({ t: 'sys', text: `${w.nick} 님, 사이버 홍대입구에 오신 것을 환영합니다! (E 착석 · F 응원봉 · G 이모트 · Enter 채팅)` });
+  chatLine({ t: 'sys', text: `${w.nick} 님, 사이버 홍대입구에 오신 것을 환영합니다!${isTouch ? '' : ' (E 착석 · F 응원봉 · G 이모트 · Enter 채팅)'}` });
   buildUi();
   net.addEventListener('msg', (e) => onMsg(e.detail));
   net.addEventListener('close', (e) => {
@@ -176,8 +203,16 @@ async function start(w) {
   if (isTouch) {
     $('joy').classList.remove('hidden');
     $('mobileUse').classList.remove('hidden');
+    $('mobileJump').classList.remove('hidden');
+    $('chatInput').placeholder = '채팅 입력…';
+    $('unmute').textContent = '🔇 화면을 터치하면 소리가 켜집니다';
     player.bindJoystick($('joy'), $('joyKnob'));
+    player.bindJump($('mobileJump'));
     $('mobileUse').onclick = useKey;
+    // 뒤로가기·앱 전환으로 전체화면이 풀렸으면 다음 터치 때 다시 전체화면으로
+    addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'touch' && !fsEl() && !e.target.closest?.('#settings, #rotateHint')) goFullscreen();
+    }, true);
   }
   last = performance.now();
   requestAnimationFrame(loop);
@@ -356,6 +391,8 @@ function buildUi() {
   $('btnStick').onclick = () => toggleStick();
   $('btnView').onclick = () => toggleView();
   $('btnSettings').onclick = () => togglePanel('settings');
+  $('btnHideGui').onclick = () => setGui(false);
+  $('guiShow').onclick = () => setGui(true);
   $('closeSettings').onclick = () => $('settings').classList.add('hidden');
   $('stickWave').onclick = () => setStick({ wave: !localAvatar.stick.wave });
   $('stickOff').onclick = () => toggleStick(false);
@@ -376,11 +413,16 @@ function buildUi() {
   bindRange('subSize', 'subSize', ['subVal', (v) => Math.round(v * 100) + '%']);
   bindRange('sens', 'sens');
   bindRange('maxAvatars', 'maxAvatars', ['maxAvVal', (v) => v + '명']);
-  for (const k of ['showNames', 'showBubbles', 'showSubs', 'mouseLock']) {
+  for (const k of ['showNames', 'showBubbles', 'showSubs', 'mouseLock', 'fullscreen']) {
     $(k).checked = prefs[k];
-    $(k).onchange = () => { prefs[k] = $(k).checked; if (k === 'mouseLock' && !prefs[k]) player.unlockMouse(); };
+    $(k).onchange = () => {
+      prefs[k] = $(k).checked;
+      if (k === 'mouseLock' && !prefs[k]) player.unlockMouse();
+      if (k === 'fullscreen') prefs[k] ? goFullscreen() : exitFullscreen();
+    };
   }
   $('mouseLockRow').classList.toggle('hidden', isTouch);
+  $('fullscreenRow').classList.toggle('hidden', !isTouch || !canFullscreen);
   player.onLockChange = (locked) => { if (locked) toast('🖱 마우스로 시점 조작 · Alt를 누르면 커서가 나와요', 2400); };
   const qs = [...$('quality').children];
   const markQ = () => qs.forEach((b) => b.classList.toggle('sel', b.dataset.q === prefs.quality));
@@ -438,6 +480,15 @@ function buildUi() {
 
   addEventListener('keydown', onKey);
 }
+
+// GUI 숨기기: 화면(영화)만 보이게. 다시 보기 버튼·알림·소리 켜기 안내는 남김
+function setGui(on) {
+  $('hud').classList.toggle('gui-off', !on);
+  if (on) return;
+  document.activeElement?.blur?.();
+  toast(isTouch ? 'GUI를 숨겼습니다 · 오른쪽 위 👁 버튼으로 다시 보기' : 'GUI를 숨겼습니다 · H 키로 다시 보기', 3000);
+}
+const guiOff = () => $('hud').classList.contains('gui-off');
 
 function togglePanel(id) {
   for (const p of ['emotePanel', 'settings', 'stickBar']) if (p !== id && !(p === 'stickBar' && localAvatar.stick.on)) $(p).classList.add('hidden');
@@ -591,10 +642,20 @@ function standUp() {
   net.send({ t: 'stand' });
 }
 
+// 모바일 착석 버튼: 앉아 있으면 '일어나기', 근처에 빈 좌석이 없으면 흐리게
+let useBtnState = '';
+function setUseBtn(state) {
+  if (state === useBtnState) return;
+  useBtnState = state;
+  $('mobileUse').innerHTML = state === 'stand' ? '<i>🧍</i><span>일어나기</span>' : '<i>🪑</i><span>착석</span>';
+  $('mobileUse').classList.toggle('off', state === 'none');
+}
+
 function onKey(e) {
   if (/INPUT|TEXTAREA/.test(document.activeElement?.tagName)) return;
   switch (e.code) {
-    case 'Enter': e.preventDefault(); $('chatInput').focus(); break;
+    case 'Enter': e.preventDefault(); if (guiOff()) setGui(true); $('chatInput').focus(); break;
+    case 'KeyH': setGui(guiOff()); break;
     case 'KeyE': useKey(); break;
     case 'KeyF': toggleStick(); break;
     case 'KeyC': if (localAvatar.stick.on) setStick({ color: (localAvatar.stick.color + 1) % (cfg?.stickColors?.length || 5) }); break;
@@ -602,7 +663,8 @@ function onKey(e) {
     case 'KeyG': togglePanel('emotePanel'); break;
     case 'KeyV': toggleView(); break;
     case 'Escape':
-      if (!$('emotePanel').classList.contains('hidden')) $('emotePanel').classList.add('hidden');
+      if (guiOff()) setGui(true);
+      else if (!$('emotePanel').classList.contains('hidden')) $('emotePanel').classList.add('hidden');
       else togglePanel('settings');
       break;
     default:
@@ -681,12 +743,13 @@ function loop(now) {
 
   // 상호작용 안내
   const pr = $('prompt');
-  if (player.seat) { pr.innerHTML = `<kbd>E</kbd> 또는 이동키로 일어나기 · 좌석 ${player.seat.id}`; pr.classList.remove('hidden'); }
-  else {
-    const s = player.nearestSeat();
-    if (s) { pr.innerHTML = `<kbd>E</kbd> ${s.id} 좌석에 앉기`; pr.classList.remove('hidden'); }
-    else pr.classList.add('hidden');
-  }
+  const near = player.seat ? null : player.nearestSeat();
+  if (player.seat) {
+    pr.innerHTML = isTouch ? `<kbd>일어나기</kbd> 버튼 또는 조이스틱으로 일어나기 · 좌석 ${player.seat.id}` : `<kbd>E</kbd> 또는 이동키로 일어나기 · 좌석 ${player.seat.id}`;
+    pr.classList.remove('hidden');
+  } else if (near) { pr.innerHTML = isTouch ? `<kbd>착석</kbd> 버튼으로 ${near.id} 좌석에 앉기` : `<kbd>E</kbd> ${near.id} 좌석에 앉기`; pr.classList.remove('hidden'); }
+  else pr.classList.add('hidden');
+  if (isTouch) setUseBtn(player.seat ? 'stand' : near ? 'sit' : 'none');
 
   const inTheater = world.inZone('theater4', player.pos.clone().add(tmpV.set(0, 1, 0)));
   const tz = world.zones.theater4;

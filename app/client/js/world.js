@@ -20,8 +20,8 @@ export class World {
     this.displays = {};
     this.lightDefs = [];
     this.zones = {};
-    this.spawn = new THREE.Vector3(2.3, 0, 2.8);   // 맵의 SPAWN이 없을 때: 엘리베이터 앞
-    this.spawnYaw = 0;
+    this.spawn = new THREE.Vector3(18.65, 0, 54.23);   // 맵의 SPAWN이 없을 때: 엘리베이터 앞 (동쪽 사인을 바라봄)
+    this.spawnYaw = Math.PI / 2;
     this.wallBVH = null;
     this.groundBVH = null;
     this.theaterDim = 0; // 0: 밝음, 1: 상영 중 어두움

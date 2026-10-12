@@ -121,6 +121,14 @@ export class Player {
     el.addEventListener('pointercancel', up);
   }
 
+  // 모바일 점프 버튼: 누르고 있는 동안 Space를 누른 것과 같음
+  bindJump(el) {
+    const up = () => this.keys.delete('Space');
+    el.addEventListener('pointerdown', (e) => { this.keys.add('Space'); try { el.setPointerCapture(e.pointerId); } catch {} });
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+  }
+
   // ---------------------------------------------------------------- 착석
   nearestSeat() {
     if (this.seat) return null;

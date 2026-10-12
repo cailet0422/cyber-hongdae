@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>사이버 홍대입구</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23e3192a'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3E4%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="/css/style.css">
@@ -23,27 +23,33 @@
   <!-- 입장 화면 -->
   <section id="entry" class="overlay">
     <div class="entry-card">
-      <div class="brand"><span class="lotte">LOTTE CINEMA</span><span class="hongdae">홍대입구 10F</span></div>
-      <h1 id="serverName">사이버 홍대입구</h1>
-      <p class="sub" id="serverInfo">서버 정보를 불러오는 중…</p>
-      <h2>캐릭터 선택</h2>
-      <div id="charPick" class="char-pick"></div>
-      <div id="entryModelBox" class="model-box">
-        <h2>내 3D 모델 <small>(선택 · 모두에게 보여요)</small></h2>
-        <div class="model-row">
-          <label class="btn small">📂 모델 파일<input id="modelFile" type="file" multiple hidden></label>
-          <label class="btn small">📁 모델 폴더<input id="modelDir" type="file" webkitdirectory hidden></label>
-          <span id="entryModelStatus" class="model-status">선택 안 함 (기본 캐릭터)</span>
-          <button id="entryModelClear" class="btn small hidden" type="button">✕</button>
+      <div class="entry-head">
+        <div class="brand"><span class="lotte">LOTTE CINEMA</span><span class="hongdae">홍대입구 10F</span></div>
+        <h1 id="serverName">사이버 홍대입구</h1>
+        <p class="sub" id="serverInfo">서버 정보를 불러오는 중…</p>
+      </div>
+      <div class="entry-body">
+        <h2>캐릭터 선택</h2>
+        <div id="charPick" class="char-pick"></div>
+        <div id="entryModelBox" class="model-box">
+          <h2>내 3D 모델 <small>(선택 · 모두에게 보여요)</small></h2>
+          <div class="model-row">
+            <label class="btn small">📂 모델 파일<input id="modelFile" type="file" multiple hidden></label>
+            <label class="btn small">📁 모델 폴더<input id="modelDir" type="file" webkitdirectory hidden></label>
+            <span id="entryModelStatus" class="model-status">선택 안 함 (기본 캐릭터)</span>
+            <button id="entryModelClear" class="btn small hidden" type="button">✕</button>
+          </div>
+          <p class="hint">VRM · GLB · GLTF · FBX · OBJ · PMX · PMD · DAE · 3DS · STL · PLY · ZIP — 텍스처가 따로 있으면 폴더째 또는 여러 파일을 함께 고르세요.</p>
         </div>
-        <p class="hint">VRM · GLB · GLTF · FBX · OBJ · PMX · PMD · DAE · 3DS · STL · PLY · ZIP — 텍스처가 따로 있으면 폴더째 또는 여러 파일을 함께 고르세요.</p>
       </div>
-      <div id="pwRow" class="pw-row hidden">
-        <input id="pwInput" type="password" placeholder="입장 비밀번호" autocomplete="off">
+      <div class="entry-foot">
+        <div id="pwRow" class="pw-row hidden">
+          <input id="pwInput" type="password" placeholder="입장 비밀번호" autocomplete="off">
+        </div>
+        <button id="enterBtn" class="btn primary big" disabled>입장하기</button>
+        <p class="hint">닉네임은 입장할 때마다 <b>케이온 캐릭터 이름 + 숫자</b>로 무작위 지정됩니다.</p>
+        <p class="err" id="entryErr"></p>
       </div>
-      <button id="enterBtn" class="btn primary big" disabled>입장하기</button>
-      <p class="hint">닉네임은 입장할 때마다 <b>케이온 캐릭터 이름 + 숫자</b>로 무작위 지정됩니다.</p>
-      <p class="err" id="entryErr"></p>
     </div>
   </section>
 
@@ -91,7 +97,10 @@
       <button class="act" id="btnStick" title="응원봉 (F)">🔦<span>응원봉</span></button>
       <button class="act" id="btnView" title="시점 (V)">🎥<span>시점</span></button>
       <button class="act" id="btnSettings" title="설정 (ESC)">⚙️<span>설정</span></button>
+      <button class="act" id="btnHideGui" title="GUI 숨기기 (H)">🙈<span>숨기기</span></button>
     </div>
+    <!-- GUI를 숨겼을 때만 보이는 다시 보기 버튼 -->
+    <button id="guiShow" title="GUI 다시 보기 (H)">👁</button>
 
     <div id="stickBar" class="panel hidden">
       <div class="stick-colors" id="stickColors"></div>
@@ -142,18 +151,28 @@
         <label><input type="checkbox" id="showSubs"> 자막 표시</label>
         <label><input type="checkbox" id="showCustom"> 다른 사람의 커스텀 모델 보기</label>
         <label id="mouseLockRow"><input type="checkbox" id="mouseLock"> 마우스 숨기기 (화면을 클릭하면 커서가 숨고 마우스로 시점 조작 · Alt로 꺼내기)</label>
+        <label id="fullscreenRow"><input type="checkbox" id="fullscreen"> 전체화면 + 가로 화면 고정</label>
       </div>
       <div class="keys">
         <b>조작</b> WASD 이동 · Shift 달리기 · Space 점프 · 화면 클릭 후 마우스로 시점 (Alt로 커서 꺼내기) · 휠 줌<br>
-        E 착석/일어나기 · F 응원봉 · C 응원봉 색 · X 흔들기 · G 이모트 · V 1/3인칭 · Enter 채팅
+        E 착석/일어나기 · F 응원봉 · C 응원봉 색 · X 흔들기 · G 이모트 · V 1/3인칭 · H GUI 숨기기 · Enter 채팅
       </div>
       <button class="btn primary" id="closeSettings">닫기</button>
     </div>
 
     <!-- 모바일 조이스틱 -->
     <div id="joy" class="hidden"><div id="joyKnob"></div></div>
-    <button id="mobileUse" class="hidden">E</button>
+    <button id="mobileUse" class="mob-btn hidden"><i>🪑</i><span>착석</span></button>
+    <button id="mobileJump" class="mob-btn hidden"><i>⬆</i><span>점프</span></button>
     <div id="unmute" class="hidden">🔇 화면을 클릭하면 소리가 켜집니다</div>
+
+    <!-- 모바일 세로 화면 안내 (가로 고정이 안 되는 기기·전체화면이 풀렸을 때) -->
+    <div id="rotateHint" class="hidden">
+      <div class="rotate-icon">📱</div>
+      <p>가로 화면에 맞춰져 있어요.<br>기기를 가로로 돌려주세요.</p>
+      <button id="rotateGo" class="btn primary">가로 전체화면으로</button>
+      <button id="rotateSkip" class="btn small">세로로 계속하기</button>
+    </div>
   </div>
 
   <script type="module" src="/js/main.js"></script>

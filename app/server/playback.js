@@ -15,6 +15,7 @@ class Playback extends EventEmitter {
     this.waiting = false; // 항목 준비 대기 중
     this.stopped = true;
     this._timer = null;
+    this._plLen = media.playlist.length;
     media.on('change', () => this._onMediaChange());
     media.on('expanded', ({ from, to }) => {
       if (this.itemId === from) { this.itemId = to[0] || null; this._sync(); }
@@ -105,6 +106,10 @@ class Playback extends EventEmitter {
 
   _onMediaChange() {
     const pl = this.media.playlist;
+    const wasEmpty = this._plLen === 0;
+    this._plLen = pl.length;
+    // 빈 대기열에 처음 영상을 올리면 재생 버튼을 누르지 않아도 준비되는 대로 바로 상영
+    if (wasEmpty && pl.length && this.autoplay && this.stopped) return this._setItem(0, { play: true });
     if (this.itemId && !pl.includes(this.itemId)) {
       // 재생 중 항목이 삭제됨
       if (!pl.length) return this.stop();
@@ -114,7 +119,6 @@ class Playback extends EventEmitter {
     const it = this.current();
     if (it && this.waiting && it.status === 'ready') return this._sync();
     if (it && it.status === 'error' && !this.stopped) this._autoSkip();
-    if (!this.itemId && pl.length && this.autoplay && this.stopped && this._autoStart) { this._autoStart = false; this._setItem(0); return; }
     this._emit();
   }
 

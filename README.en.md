@@ -110,7 +110,7 @@ In the **🎬 상영 관리** (*Playlist*) tab:
 - **Paste links** (one per line) and click **🔗 링크 추가** (*Add link*).
   - *Download first* (default) is the most stable and gives the best quality.
   - *Stream directly* starts instantly. Live streams always use this mode.
-- **Playback controls**: play/pause, previous/next, stop, seek bar (moves everyone), and loop mode (all / one / none). Reorder with ↑↓. Double-click a title to rename it. Pick or add a subtitle per item.
+- **Playback controls**: play/pause, previous/next, stop, seek bar (moves everyone), and loop mode (all / one / none). Adding the first video to an empty queue starts it automatically as soon as it is ready. Reorder with ↑↓. Double-click a title to rename it. Pick or add a subtitle per item.
 
 ## 📺 Signs
 
@@ -133,10 +133,11 @@ In the **🎬 상영 관리** (*Playlist*) tab:
 | F / C / X | light stick on-off / color / wave |
 | G | emotes |
 | V | first / third person |
+| H | hide / show the GUI (screen only) |
 | Enter | chat |
 | Esc | settings (avatar, volume, subtitle size, graphics quality, …) |
 
-On phones, use the on-screen joystick and the **E** button. If there is no sound, click the red banner. Browser autoplay policies require one click.
+On phones, joining switches to **landscape fullscreen**. Move with the joystick (bottom left) and use the **점프** (*jump*) and **착석** (*sit*; it becomes **일어나기**, *stand up*, while seated) buttons (bottom right). Tap **🙈** (top right) to hide the GUI and **👁** to bring it back. iPhone Safari can't go fullscreen or lock landscape from a web page, so rotate the phone yourself; fullscreen can be turned off in settings. If there is no sound, click the red banner. Browser autoplay policies require one click.
 
 ---
 

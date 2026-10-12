@@ -412,7 +412,8 @@ CF_U0, CF_U1, CF_V0, CF_V1, CF_H = VOID_U0, VOID_U1 + 0.3, V(510), VOID_V1 + 0.3
 
 # ---------------------------------------------------------------- 바닥 & 천장
 # 로비 전체 바닥 (진회색 타일) - 에스컬레이터 보이드 자리는 비움
-for nm, a, b, c, d in (("w", 0.0, VOID_U0, V(340) - 0.15, SOUTH_V), ("e", VOID_U1, U(390) + 0.15, V(340) - 0.15, SOUTH_V),
+for nm, a, b, c, d in (("w", 0.0, VOID_U0, V(340) - 0.15, SOUTH_V), ("e", VOID_U1, U(290), V(340) - 0.15, SOUTH_V),
+                       ("e2", U(290), U(390) + 0.15, V(340) - 0.15, V(840)),   # 엘리베이터 홀 남쪽 창 밖은 건물 밖
                        ("n", VOID_U0, VOID_U1, V(340) - 0.15, VOID_V0), ("s", VOID_U0, VOID_U1, VOID_V1, SOUTH_V)):
     box(f"F_lobby_{nm}", a, b, c, d, -0.2, 0.0, "floor_dark", floor=True, collide=False)
 box("F_lobby_east", U(390) + 0.15, U(610), V(650), V(683), -0.2, 0.0, "floor_dark", floor=True, collide=False)
@@ -423,14 +424,14 @@ box("F_wood2", U(390) + 0.15, U(415), V(395), V(650), -0.2, 0.0, "floor_dark", f
 box("F_westcor", 0.0, AUD_U0 - TH, V(45), V(340) - 0.15, -0.2, 0.0, "floor_wood", floor=True, collide=False)
 # 4관 동쪽/북쪽 입장 복도 (카펫)
 box("F_entry_e", AUD_U1 + TH, U(435), V(45), V(265), -0.2, 0.0, "carpet_dark", floor=True, collide=False)
-box("F_entry_n", U(330), AUD_U1 + TH, V(45), AUD_V0 - TH, -0.2, 0.0, "carpet_dark", floor=True, collide=False)
+box("F_entry_n", AUD_U0 - TH, AUD_U1 + TH, V(45), AUD_V0 - TH, -0.2, 0.0, "carpet_dark", floor=True, collide=False)   # 서쪽 끝은 포스터 복도 (4관 출구)
 # 5관 복도
 box("F_5cor", U(465) + 0.15, U(555), V(45), V(265), -0.2, 0.0, "floor_wood", floor=True, collide=False)
 # 화장실
 box("F_wc", U(400), U(610), V(683) + 0.15, V(840), -0.2, 0.0, "wall_white", floor=True, collide=False)
 
 # 천장 (4관 박스 제외)
-for nm, a, b, c, d in (("w", 0.0, CF_U0, V(340), SOUTH_V), ("e", CF_U1, U(610), V(340), SOUTH_V),
+for nm, a, b, c, d in (("w", 0.0, CF_U0, V(340), SOUTH_V), ("e", CF_U1, U(290), V(340), SOUTH_V), ("e2", U(290), U(610), V(340), V(840)),
                        ("n", CF_U0, CF_U1, V(340), CF_V0), ("s", CF_U0, CF_U1, CF_V1, SOUTH_V)):
     box(f"C_lobby_{nm}", a, b, c, d, LOBBY_H, LOBBY_H + 0.2, "ceiling_gray", collide=False)
 # 보이드 위 코퍼: 브론즈 테두리 + 간접조명
@@ -442,7 +443,7 @@ box("C_coffer_cove_w", CF_U0, CF_U0 + 0.05, CF_V0, CF_V1, CF_H - 0.12, CF_H - 0.
 box("C_coffer_cove_e", CF_U1 - 0.05, CF_U1, CF_V0, CF_V1, CF_H - 0.12, CF_H - 0.04, "emit_warm", collide=False)
 box("C_lobby_ne", AUD_U1 + TH, U(610), V(265), V(340), LOBBY_H, LOBBY_H + 0.2, "ceiling_gray", collide=False)
 box("C_entry", AUD_U1 + TH, U(555), V(45), V(265), COR_H, COR_H + 0.2, "ceiling_dark", collide=False)
-box("C_entry_n", U(330), AUD_U1 + TH, V(45), AUD_V0 - TH, COR_H, COR_H + 0.2, "ceiling_dark", collide=False)
+box("C_entry_n", AUD_U0 - TH, AUD_U1 + TH, V(45), AUD_V0 - TH, COR_H, COR_H + 0.2, "ceiling_dark", collide=False)
 box("C_westcor", 0.0, AUD_U0 - TH, V(45), V(340), COR_H + 0.6, COR_H + 0.8, "ceiling_dark", collide=False)
 box("C_strip", AUD_U0 - TH, AUD_U1 + TH, AUD_V1 + TH, V(340), LOBBY_H, LOBBY_H + 0.2, "ceiling_gray", collide=False)
 
@@ -487,19 +488,18 @@ ENT_U0, ENT_U1 = U(352), U(378)
 wall_with_openings("A_wall_n", "u", AUD_V0 - TH / 2, AUD_U0 - TH, AUD_U1 + TH, 0, AUD_H, "wall_theater",
                    [(ENT_U0, ENT_U1, 2.6)])
 wall("A_wall_s", AUD_U0 - TH, AUD_V1 + TH / 2, AUD_U1 + TH, AUD_V1 + TH / 2, 0, AUD_H, "wall_theater")
-# 4관 남쪽 띠 (로비 북벽). 서쪽: 석재 벽 + LOTTE CINEMA 사인 / 동쪽: 통로 입구 + Sweet# 매점 (아래 매점 구획)
+# 4관 남쪽 띠 (로비 북벽): 서쪽 포스터 복도 끝부터 전부 Sweet# 매점, 동쪽 끝에 직원 대기공간 (아래 매점 구획)
 STRIP_V0, STRIP_V1 = AUD_V1 + TH, V(340) - 0.15
-PASS_U0, PASS_U1 = 14.6, 16.0            # 매점 왼쪽 통로 입구
-box("B_strip", AUD_U0 - TH, PASS_U0, STRIP_V0, STRIP_V1, 0, LOBBY_H, "wall_stone")
-plane("SIGN_lotte", 8.4, STRIP_V1, 3.65, 6.0, 1.5, "S", "sign_lotte_r", offset=0.02)   # 4/5/6관은 오른쪽(동쪽)
+box("B_strip_w", AUD_U0 - TH, AUD_U0, STRIP_V0, STRIP_V1, 0, LOBBY_H, "wall_stone")   # 포스터 복도 동쪽 벽 (매점 서쪽 벽)
 # 4관 출구 복도(서쪽, U(390)~U(435))와 입구 통로(동쪽, U(435)~U(465)) - 두 복도는 북쪽 끝에서 만나 4관 북쪽 복도로 이어짐
 IN_U0, IN_U1 = U(435) + 0.3, U(465) + 0.15     # 입구 통로 내부
 wall_with_openings("E_cor_east", "v", U(435) + 0.15, V(45), V(265), 0, COR_H, "wall_charcoal", [(V(45), V(45) + 2.2, COR_H)])
 box("E_in_east", IN_U1, IN_U1 + 0.3, V(45), V(220), 0, COR_H, "wall_charcoal")   # 5관 복도와 경계 (남쪽은 베이비시트 선반)
 box("F_entry_in", IN_U0, IN_U1, V(45), V(265), -0.2, 0.0, "carpet_dark", floor=True, collide=False)
-# 북쪽 복도 서쪽 끝 막음
-wall("E_cor_nend", U(330), V(45), U(330), AUD_V0 - TH, 0, COR_H, "wall_charcoal")
-# 4관 출구 파사드 (v=V(270)) - 문 개구부 U(398)~U(428). 문 왼쪽은 Sweet# 픽업 카운터, 광음시네마 벽 오른쪽이 입구 통로
+# 북쪽 복도는 4관 북쪽 벽을 따라 서쪽 포스터 복도 끝까지 이어짐 = 4관 출구 (포스터 복도에서 보면 맨 끝 오른쪽)
+for i, uu in enumerate([AUD_U0 + 2.5, AUD_U0 + 6.5, AUD_U0 + 10.5]):
+    light(f"LIGHT_cor_nw_{i}", uu, (V(45) + AUD_V0 - TH) / 2, COR_H - 0.05, kind="spot", angle=65, intensity=4.5, distance=6.0, color=(1, 0.8, 0.6))
+# 4관 출구 파사드 (v=V(270)) - 문 개구부 U(398)~U(428). 문 왼쪽은 Sweet# 옆 직원 대기공간, 광음시네마 벽 오른쪽이 입구 통로
 DOOR_U0, DOOR_U1 = AUD_U1 + TH + 0.25, U(432) - 0.1
 FAC_V = V(268)
 wall_with_openings("E_facade", "u", FAC_V, AUD_U1 + TH, U(435) + 0.3, 0, LOBBY_H, "wall_stone",
@@ -522,7 +522,7 @@ box("E_sign4_rod1", AUD_U1 + 0.6, AUD_U1 + 0.65, FAC_V + 0.54, FAC_V + 0.58, 3.3
 box("E_sign4_rod2", AUD_U1 + SIGN4_W - 0.1, AUD_U1 + SIGN4_W - 0.05, FAC_V + 0.54, FAC_V + 0.58, 3.35 + SIGN4_H + 0.16, LOBBY_H, "steel_dark", collide=False)
 # 출구 사인 (문 위, 로비 쪽)
 plane("SIGN_exit_door4", (DOOR_U0 + DOOR_U1) / 2, FAC_V + 0.2, 2.68, 0.6, 0.3, "S", "sign_exit", offset=0.01, merge=True)
-# 문과 매점 픽업 카운터 사이 어두운 타일 기둥면
+# 문과 직원 대기공간 사이 어두운 타일 기둥면
 box("E_pillar_clad", AUD_U1 + TH, AUD_U1 + TH + 0.03, FAC_V + 0.2, STRIP_V0 + 0.3, 0, LOBBY_H, "wall_charcoal", collide=False)
 # 복도 내부: 벽등과 출구 사인
 for i, vv in enumerate([V(240), V(190), V(140), V(90)]):
@@ -581,7 +581,7 @@ for i in range(6):
 # 영사실 창 (뒷벽 상단)
 box("A_proj_win", AUD_U0, AUD_U0 + 0.1, (AUD_V0 + AUD_V1) / 2 - 0.8, (AUD_V0 + AUD_V1) / 2 + 0.8, 6.3, 7.1, "emit_blue", collide=False)
 empty("PROJECTOR", AUD_U0 + 0.15, (AUD_V0 + AUD_V1) / 2, 6.7, {"projector": 1})
-# 출구 사인 (스크린 옆 입장구 내부 쪽)
+# 출구 사인 (스크린 옆 입장구 내부 쪽: 나가면 북쪽 복도를 따라 서쪽 포스터 복도 끝으로)
 plane("SIGN_exit_in", (ENT_U0 + ENT_U1) / 2, AUD_V0 + 0.1, 2.85, 0.6, 0.3, "S", "sign_exit_door", offset=0.01, merge=True)
 # 극장 조명: 천장 다운라이트 자리에서 아래로 비추는 스포트 (천장이 하얗게 뜨지 않게)
 for i, j in ((0, 1), (0, 3), (2, 1), (2, 3), (4, 1), (4, 3)):
@@ -745,31 +745,15 @@ print("seats:", seat_count)
 # ---------------------------------------------------------------- 서쪽 포스터 복도 & 키오스크
 for i, (a, b) in enumerate([(80, 110), (155, 185), (225, 260), (300, 338)]):
     poster_box(f"P_poster_{i}", 0.0, (V(a) + V(b)) / 2, 1.75, "E", i)
-# 복도 북쪽 끝: 10층 로비 입구 엘리베이터 홀 (엘리베이터 2대, 남쪽을 바라봄)
+# 복도 맨 끝 (북쪽): 오른쪽(동쪽)이 4관 출구 = 4관 북쪽 복도로 뚫린 개구부 (엘리베이터 홀은 남동쪽 석재 블록 안)
 EV_V = V(45) - 0.15                                   # 북쪽 벽 안쪽 면
-# 홀 동쪽 막음 (4관 북쪽 바닥 없는 틈으로 빠지지 않게, 4관 서벽과 같은 면)
-wall("EV_wall_e", AUD_U0 - TH / 2, EV_V, AUD_U0 - TH / 2, AUD_V0 - TH, 0, LOBBY_H, "wall_charcoal")
 box("EV_cladding", 0.0, AUD_U0 - TH, EV_V, EV_V + 0.02, 0, COR_H + 0.6, "wall_stone", collide=False)
-box("EV_cladding_e", AUD_U0 - TH - 0.02, AUD_U0 - TH, EV_V + 0.02, V(87) + 2.2, 0, COR_H + 0.6, "wall_stone", collide=False)
-for i, uc in enumerate([1.2, 3.4]):
-    box(f"EV_door_{i}", uc - 0.55, uc + 0.55, EV_V + 0.02, EV_V + 0.06, 0, 2.2, "metal", collide=False)
-    box(f"EV_seam_{i}", uc - 0.006, uc + 0.006, EV_V + 0.06, EV_V + 0.065, 0, 2.2, "black_plastic", collide=False)
-    box(f"EV_jamb_l{i}", uc - 0.68, uc - 0.55, EV_V + 0.02, EV_V + 0.12, 0, 2.32, "steel_dark", collide=False)
-    box(f"EV_jamb_r{i}", uc + 0.55, uc + 0.68, EV_V + 0.02, EV_V + 0.12, 0, 2.32, "steel_dark", collide=False)
-    box(f"EV_head_{i}", uc - 0.68, uc + 0.68, EV_V + 0.02, EV_V + 0.12, 2.2, 2.32, "steel_dark", collide=False)
-    box(f"EV_ind_{i}", uc - 0.25, uc + 0.25, EV_V + 0.02, EV_V + 0.06, 2.45, 2.65, "black_plastic", collide=False)
-    box(f"EV_ind_lit_{i}", uc - 0.12, uc + 0.12, EV_V + 0.06, EV_V + 0.065, 2.5, 2.6, "emit_warm", collide=False)
-    box(f"EV_sill_{i}", uc - 0.55, uc + 0.55, EV_V + 0.02, V(45) + 0.25, 0, 0.01, "metal", collide=False)
-# 호출 버튼
-box("EV_call", 2.24, 2.36, EV_V + 0.02, EV_V + 0.05, 1.0, 1.28, "metal", collide=False)
-box("EV_call_up", 2.27, 2.33, EV_V + 0.05, EV_V + 0.055, 1.17, 1.22, "emit_white", collide=False)
-box("EV_call_dn", 2.27, 2.33, EV_V + 0.05, EV_V + 0.055, 1.06, 1.11, "emit_white", collide=False)
-# 엘리베이터에서 내리면 보이는 안내 사인 (4관 서쪽 벽)
-plane("SIGN_lotte_ev", AUD_U0 - TH, V(87), 2.55, 3.6, 0.9, "W", "sign_lotte_r", offset=0.02, merge=False)   # 로비는 오른쪽(남쪽)
+box("EV_cladding_e", AUD_U0 - TH - 0.02, AUD_U0 - TH, AUD_V0 - TH, V(87) + 2.2, 0, COR_H + 0.6, "wall_stone", collide=False)
+box("EX4_lintel", AUD_U0 - TH, AUD_U0, V(45), AUD_V0 - TH, COR_H, LOBBY_H, "wall_stone", collide=False)   # 개구부 위 (복도 천장 높이 차)
+plane("SIGN_exit_4", AUD_U0 - TH, (V(45) + AUD_V0 - TH) / 2, COR_H + 0.3, 0.6, 0.3, "W", "sign_exit_door", offset=0.01, merge=True)
+plane("SIGN_exit_4_l", 0.0, (V(45) + AUD_V0 - TH) / 2, 2.6, 0.6, 0.3, "E", "sign_exit_l", offset=0.01, merge=True)   # 나오면서 보는 사인: 왼쪽(남쪽) 로비
 for i, vv in enumerate([V(45) + 2.4, V(140), V(230), V(310)]):
     light(f"LIGHT_westcor_{i}", 2.3, vv, COR_H + 0.55, kind="spot", angle=65, intensity=5.5, distance=7.0, color=(1, 0.92, 0.82))
-# 접속 시작 위치: 엘리베이터 앞, 남쪽(로비 방향)을 바라봄. yaw = atan2(dx, dz) 기준
-empty("SPAWN", 2.3, V(45) + 2.4, 0.0, {"spawn": 1, "yaw": 0.0})
 # 키오스크 열 (포토티켓 / 티켓 발권 / 바로팝콘 / 배터리 대여)
 KIOSK_V0, KIOSK_V1 = V(343), V(437)
 box("K_backwall", 0.0, 0.3, KIOSK_V0, KIOSK_V1, 0, 3.2, "wall_charcoal")
@@ -823,87 +807,70 @@ box("COL_p1", U(441), U(457), V(328), V(344), 0, LOBBY_H, "wall_stone")
 box("COL_p2", U(291), U(307), V(522), V(538), 0, LOBBY_H, "wall_stone")
 # 알코브 남쪽 = Sweet 블록 북벽
 
-# ---------------------------------------------------------------- Sweet# 매점 (4관 출구 왼쪽, 로비 북벽 동쪽 끝)
-# 남쪽(로비)을 보는 메인 카운터 + 4관 출구 쪽(동쪽)을 보는 픽업 카운터, 왼쪽에 통로 입구
-SW_U0, SW_U1 = PASS_U1 + 0.3, AUD_U1 + TH            # 매점 구획 (서쪽 칸막이 안쪽 ~ 동쪽 면)
-SC_U0, SC_U1 = SW_U0 + 0.3, SW_U1 - 0.825            # 남쪽 카운터
-PK_V0, PK_V1 = STRIP_V0 + 0.3, STRIP_V1 - 0.85             # 동쪽 픽업 카운터
-box("SW_partition", PASS_U1, SW_U0, STRIP_V0, STRIP_V1, 0, LOBBY_H, "wall_charcoal")
-box("SW_floor", SW_U0, SW_U1, STRIP_V0, STRIP_V1, -0.2, 0.0, "floor_dark", collide=False)
-box("SW_ceiling", SW_U0, SW_U1, STRIP_V0, STRIP_V1 - 0.35, 3.0, 3.1, "ceiling_gray", collide=False)
+# ---------------------------------------------------------------- Sweet# 매점 (로비 북벽 전체: 포스터 복도 끝 ~ 직원 대기공간)
+# 남쪽(로비)을 보는 긴 카운터, 동쪽 끝에 문 달린 작은 직원 대기공간
+SW_U0, SW_U1 = AUD_U0, AUD_U1 + TH                   # 매점 서쪽 끝(포스터 복도 동쪽 벽 안쪽) ~ 띠 동쪽 면
+SWK_U1 = AUD_U1 - 1.525                              # 매점 동쪽 끝 (그 동쪽은 직원 대기공간)
+SC_U0, SC_U1 = SW_U0 + 0.3, SWK_U1 - 0.825           # 남쪽 카운터
+SC_MID = (SC_U0 + SC_U1) / 2
+SW_PIER_V = STRIP_V1 - 0.85                          # 카운터 오른쪽 기둥(포스터+냉장고) 깊이
+KIT_V0 = STRIP_V0                                    # 주방 뒷벽 (4관 남쪽 벽 바로 앞)
+box("SW_floor", SW_U0, SWK_U1, KIT_V0, STRIP_V1, -0.2, 0.0, "floor_dark", collide=False)
+box("SW_ceiling", SW_U0, SWK_U1, KIT_V0, STRIP_V1 - 0.35, 3.0, 3.1, "ceiling_gray", collide=False)
 box("SW_pier_w", SW_U0, SC_U0, STRIP_V1 - 0.35, STRIP_V1, 0, LOBBY_H, "wall_charcoal")
-box("SW_pier_se", SC_U1, SW_U1, PK_V1, STRIP_V1, 0, LOBBY_H, "wall_charcoal")
+box("SW_pier_se", SC_U1, SWK_U1, SW_PIER_V, STRIP_V1, 0, LOBBY_H, "wall_charcoal")
 # 남쪽 메인 카운터 (밝은 전면 + 상판 아래 따뜻한 조명)
 box("SW_counter", SC_U0, SC_U1, STRIP_V1 - 0.75, STRIP_V1, 0, 1.06, "counter_lit")
 box("SW_counter_top", SC_U0, SC_U1, STRIP_V1 - 0.8, STRIP_V1 + 0.05, 1.06, 1.1, "black_plastic", collide=False)
 box("SW_counter_glow", SC_U0, SC_U1, STRIP_V1, STRIP_V1 + 0.03, 0.9, 0.98, "emit_warm", collide=False)
-# 동쪽 픽업 카운터 (철망 유리 칸막이 + 위 벌크헤드)
-box("SW_pickup", SW_U1 - 0.7, SW_U1, PK_V0, PK_V1, 0, 1.06, "counter_lit")
-box("SW_pickup_top", SW_U1 - 0.75, SW_U1 + 0.05, PK_V0, PK_V1, 1.06, 1.1, "black_plastic", collide=False)
-box("SW_pickup_glow", SW_U1, SW_U1 + 0.03, PK_V0, PK_V1, 0.9, 0.98, "emit_warm", collide=False)
-box("SW_pickup_glass", SW_U1 - 0.05, SW_U1 - 0.02, PK_V0, PK_V1, 1.1, 2.25, "glass", collide=False)
-for k in range(4):
-    vv = PK_V0 + k * (PK_V1 - PK_V0) / 3
-    box(f"SW_pickup_mull_{k}", SW_U1 - 0.06, SW_U1 - 0.01, vv - 0.025, vv + 0.025, 1.06, 2.25, "steel_dark", collide=False)
-box("SW_pickup_bulk", SW_U1 - 0.5, SW_U1, PK_V0 - 0.3, PK_V1, 2.25, LOBBY_H, "wall_charcoal", collide=False)
-plane("SW_pickup_sign", SW_U1, (PK_V0 + PK_V1) / 2, 2.45, 1.4, 0.32, "E", "emit_blue", offset=0.01, merge=True)
 # 카운터 너머로 점프해 들어가지 못하게
 box("SW_block_s", SC_U0, SC_U1, STRIP_V1 - 0.1, STRIP_V1, 0, 3.0, "invisible", props={"invisible": 1})
-box("SW_block_e", SW_U1 - 0.1, SW_U1, STRIP_V0, PK_V1, 0, 2.25, "invisible", props={"invisible": 1})
-# 주방: 벽돌 뒷벽, 작업대, 팝콘 기계, 음료 디스펜서, 컵 선반
-box("SW_brick", SW_U0, SW_U1 - 0.3, STRIP_V0, STRIP_V0 + 0.3, 0, 3.0, "brick", collide=False)
-box("SW_bench", SC_U0, SW_U1 - 1.0, STRIP_V0 + 0.3, STRIP_V0 + 1.0, 0, 0.9, "steel_dark", collide=False)
-for i, uc in enumerate([SC_U0 + 1.1, SC_U0 + 2.6]):
-    box(f"SW_popcorn_{i}", uc - 0.55, uc + 0.55, STRIP_V0 + 0.35, STRIP_V0 + 0.95, 0.9, 2.0, "metal", collide=False)
-    box(f"SW_popcorn_glow_{i}", uc - 0.45, uc + 0.45, STRIP_V0 + 0.95, STRIP_V0 + 0.96, 1.15, 1.85, "emit_warm", collide=False)
-box("SW_drink", SC_U1 - 1.3, SC_U1 - 0.6, STRIP_V0 + 0.35, STRIP_V0 + 0.9, 0.9, 1.7, "black_plastic", collide=False)
-box("SW_cups", SW_U1 - 1.1, SW_U1 - 0.8, PK_V0 + 0.2, PK_V1 - 0.2, 1.0, 2.0, "red_box", collide=False)
+# 주방: 벽돌 뒷벽, 작업대, 팝콘 기계 4대 사이사이 음료 디스펜서
+box("SW_brick", SW_U0, SWK_U1, KIT_V0, KIT_V0 + 0.3, 0, 3.0, "brick", collide=False)
+box("SW_bench", SC_U0, SWK_U1 - 0.3, KIT_V0 + 0.3, KIT_V0 + 1.0, 0, 0.9, "steel_dark", collide=False)
+for i in range(4):
+    uc = SC_U0 + 1.1 + i * 3.65
+    box(f"SW_popcorn_{i}", uc - 0.55, uc + 0.55, KIT_V0 + 0.35, KIT_V0 + 0.95, 0.9, 2.0, "metal", collide=False)
+    box(f"SW_popcorn_glow_{i}", uc - 0.45, uc + 0.45, KIT_V0 + 0.95, KIT_V0 + 0.96, 1.15, 1.85, "emit_warm", collide=False)
+    if i < 3:
+        box(f"SW_drink_{i}", uc + 1.5, uc + 2.2, KIT_V0 + 0.35, KIT_V0 + 0.9, 0.9, 1.7, "black_plastic", collide=False)
 # 카운터 위 POS·픽업 안내
-for i, uc in enumerate([SC_U0 + 0.7, SC_U0 + 2.0, SC_U0 + 3.3]):
+for i in range(6):
+    uc = SC_U0 + 0.7 + i * 2.4
     box(f"SW_pos_{i}", uc - 0.17, uc + 0.17, STRIP_V1 - 0.6, STRIP_V1 - 0.5, 1.06, 1.38, "black_plastic", collide=False)
-    plane(f"SW_pos_scr_{i}", uc, STRIP_V1 - 0.5, 1.24, 0.3, 0.24, "S", "kiosk_screens", offset=0.005, merge=True, uv=(i / 4, 0.3, (i + 1) / 4, 0.7))
+    plane(f"SW_pos_scr_{i}", uc, STRIP_V1 - 0.5, 1.24, 0.3, 0.24, "S", "kiosk_screens", offset=0.005, merge=True, uv=(i % 4 / 4, 0.3, (i % 4 + 1) / 4, 0.7))
 box("SW_pickup_stand", SC_U1 - 0.55, SC_U1 - 0.15, STRIP_V1 - 0.6, STRIP_V1 - 0.5, 1.06, 1.8, "black_plastic", collide=False)
 plane("SW_pickup_stand_sign", SC_U1 - 0.35, STRIP_V1 - 0.5, 1.68, 0.4, 0.16, "S", "emit_blue", offset=0.005, merge=True)
-# 소핏 + Sweet# 간판 + 메뉴 보드
+# 소핏 + Sweet# 간판 + 메뉴 보드 3세트
 box("SW_soffit", SW_U0, SC_U1, STRIP_V1 - 0.35, STRIP_V1, 3.0, LOBBY_H, "wall_charcoal", collide=False)
-plane("SW_sign", (SC_U0 + SC_U1) / 2, STRIP_V1, 4.0, 4.0, 1.0, "S", "sign_sweet", offset=0.03, merge=False)
+plane("SW_sign", SC_MID, STRIP_V1, 4.0, 5.0, 1.25, "S", "sign_sweet", offset=0.03, merge=False)
 box("SW_menu_frame", SC_U0 + 0.15, SC_U1 - 0.15, STRIP_V1 - 0.5, STRIP_V1 - 0.38, 2.2, 2.95, "black_plastic", collide=False)
-plane("SW_menu", (SC_U0 + SC_U1) / 2, STRIP_V1 - 0.38, 2.575, 4.4, 0.69, "S", "menu_boards", offset=0.005, merge=False)
+for i in range(3):
+    plane(f"SW_menu_{i}", SC_MID + (i - 1) * 4.6, STRIP_V1 - 0.38, 2.575, 4.4, 0.69, "S", "menu_boards", offset=0.005, merge=True)
 # 오른쪽 끝: 포스터 + 음료 냉장고
-plane("SW_pier_poster", (SC_U1 + SW_U1) / 2, STRIP_V1, 2.45, 0.6, 0.86, "S", "posters", offset=0.01, merge=True, uv=poster_uv(2))
-box("SW_fridge", SC_U1 + 0.1, SW_U1 - 0.03, STRIP_V1, STRIP_V1 + 0.65, 0, 1.95, "kiosk_body")
-box("SW_fridge_door", SC_U1 + 0.16, SW_U1 - 0.09, STRIP_V1 + 0.65, STRIP_V1 + 0.67, 0.15, 1.75, "fridge_lit", collide=False)
-light("LIGHT_sweet_in", (SC_U0 + SC_U1) / 2, STRIP_V0 + 1.8, 2.8, intensity=3.0, distance=6.0, color=(1, 0.75, 0.5))
-# 줄서기 스탠션 (분홍 벨트)
-STN_ROWS = [(STRIP_V1 + 1.2, [SC_U0, SC_U0 + 1.6, SC_U0 + 3.2, SC_U1 - 0.3]), (STRIP_V1 + 2.4, [SC_U0, SC_U0 + 1.6, SC_U0 + 3.2])]
+plane("SW_pier_poster", (SC_U1 + SWK_U1) / 2, STRIP_V1, 2.45, 0.6, 0.86, "S", "posters", offset=0.01, merge=True, uv=poster_uv(2))
+box("SW_fridge", SC_U1 + 0.1, SWK_U1 - 0.03, STRIP_V1, STRIP_V1 + 0.65, 0, 1.95, "kiosk_body")
+box("SW_fridge_door", SC_U1 + 0.16, SWK_U1 - 0.09, STRIP_V1 + 0.65, STRIP_V1 + 0.67, 0.15, 1.75, "fridge_lit", collide=False)
+for i in range(3):
+    light(f"LIGHT_sweet_in_{i}", SC_MID + (i - 1) * 4.8, KIT_V0 + 1.8, 2.8, intensity=3.0, distance=6.0, color=(1, 0.75, 0.5))
+# 매점 오른쪽 작은 직원 대기공간 (로비 쪽 문, 들어갈 수 없음)
+box("STAFF_block", SWK_U1, SW_U1, KIT_V0, STRIP_V1, 0, LOBBY_H, "wall_charcoal")
+STF_CU = (SWK_U1 + SW_U1) / 2
+box("STAFF_door", STF_CU - 0.45, STF_CU + 0.45, STRIP_V1, STRIP_V1 + 0.04, 0, 2.1, "metal_gray", collide=False)
+box("STAFF_door_bar", STF_CU - 0.35, STF_CU - 0.05, STRIP_V1 + 0.04, STRIP_V1 + 0.07, 1.0, 1.05, "metal", collide=False)
+box("STAFF_door_head", STF_CU - 0.53, STF_CU + 0.53, STRIP_V1, STRIP_V1 + 0.06, 2.1, 2.18, "steel_dark", collide=False)
+for nm, a in (("l", STF_CU - 0.53), ("r", STF_CU + 0.45)):
+    box(f"STAFF_door_jamb_{nm}", a, a + 0.08, STRIP_V1, STRIP_V1 + 0.06, 0, 2.18, "steel_dark", collide=False)
+# 줄서기 스탠션 (분홍 벨트, 카운터 가운데 앞)
+STN_U0 = SC_MID - 2.4
+STN_ROWS = [(STRIP_V1 + 1.2, [STN_U0, STN_U0 + 1.6, STN_U0 + 3.2, STN_U0 + 4.8]), (STRIP_V1 + 2.4, [STN_U0, STN_U0 + 1.6, STN_U0 + 3.2])]
 for r, (vv, us) in enumerate(STN_ROWS):
     for i, uu in enumerate(us):
         cylinder(f"STN_{r}_{i}", uu, vv, 0, 0.95, 0.035, "metal", seg=8)
         cylinder(f"STN_base_{r}_{i}", uu, vv, 0, 0.03, 0.17, "metal", seg=12)
         if i:
             box(f"STN_belt_{r}_{i}", us[i - 1], uu, vv - 0.02, vv + 0.02, 0.86, 0.92, "belt_pink", collide=False)
-box("STN_belt_link", SC_U0 - 0.02, SC_U0 + 0.02, STN_ROWS[0][0], STN_ROWS[1][0], 0.86, 0.92, "belt_pink", collide=False)
-
-# 매점 왼쪽 통로 입구 (안쪽 베이지 벽 + 나무 징두리, 안쪽 문은 닫힘)
-PASS_V0 = STRIP_V0 + 1.3
-box("PS_lintel", PASS_U0, PASS_U1, STRIP_V1 - 0.3, STRIP_V1, 2.45, LOBBY_H, "wall_charcoal", collide=False)
-box("PS_back", PASS_U0, PASS_U1, PASS_V0 - 0.3, PASS_V0, 0, 2.45, "wall_beige")
-box("PS_ceiling", PASS_U0, PASS_U1, PASS_V0 - 0.3, STRIP_V1 - 0.3, 2.45, 2.55, "wall_white", collide=False)
-box("PS_floor", PASS_U0, PASS_U1, PASS_V0, STRIP_V1, -0.2, 0.0, "floor_dark", floor=True, collide=False)
-for nm, a, b in (("w", PASS_U0, PASS_U0 + 0.02), ("e", PASS_U1 - 0.02, PASS_U1)):
-    box(f"PS_wall_{nm}", a, b, PASS_V0, STRIP_V1, 0, 2.45, "wall_beige", collide=False)
-    box(f"PS_wains_{nm}", a, b, PASS_V0, STRIP_V1, 0, 0.95, "wood", collide=False)
-box("PS_wains_back", PASS_U0, PASS_U1, PASS_V0, PASS_V0 + 0.02, 0, 0.95, "wood", collide=False)
-box("PS_door", PASS_U0 + 0.3, PASS_U1 - 0.3, PASS_V0, PASS_V0 + 0.04, 0, 2.1, "metal_gray", collide=False)
-box("PS_door_bar", PASS_U0 + 0.4, PASS_U1 - 0.4, PASS_V0 + 0.04, PASS_V0 + 0.08, 1.0, 1.05, "metal", collide=False)
-plane("PS_exit_sign", (PASS_U0 + PASS_U1) / 2, STRIP_V1, 3.45, 0.5, 0.25, "S", "sign_exit_door", offset=0.01, merge=True)
-for i in range(3):
-    uc = PASS_U0 + 0.3 + i * 0.4
-    plane(f"PS_poster_{i}", uc, STRIP_V1, 2.85, 0.32, 0.46, "S", "posters", offset=0.01, merge=True, uv=poster_uv(3 + i))
-light("LIGHT_pass", (PASS_U0 + PASS_U1) / 2, (PASS_V0 + STRIP_V1) / 2, 2.3, intensity=2.0, distance=4.0, color=(1, 0.9, 0.75))
-# 통로 왼쪽 대형 라이트박스
-box("LB_frame", PASS_U0 - 2.45, PASS_U0 - 0.15, STRIP_V1, STRIP_V1 + 0.12, 0.2, 3.0, "black_plastic", collide=False)
-plane("LB_poster", PASS_U0 - 1.3, STRIP_V1 + 0.12, 1.6, 2.1, 2.6, "S", "posters", offset=0.005, merge=True, uv=poster_uv(7))
+box("STN_belt_link", STN_U0 - 0.02, STN_U0 + 0.02, STN_ROWS[0][0], STN_ROWS[1][0], 0.86, 0.92, "belt_pink", collide=False)
 
 # ---------------------------------------------------------------- 박스오피스 · 인형뽑기 · ATM · 키오스크 (6관 알코브 남쪽 블록)
 BO_U0, BO_U1, BO_V0, BO_V1 = U(385), U(570), V(395), V(650)
@@ -981,10 +948,58 @@ plane("WC_hydrant_label", U(432.5), WC_V0 - 0.35, 1.55, 1.6, 0.3, "N", "sign_hyd
 for i, uu in enumerate([U(450), U(560)]):
     light(f"LIGHT_wc_{i}", uu, (WC_V0 + WC_V1) / 2, 2.75, kind="spot", angle=65, intensity=3.0, distance=6.0, color=(0.95, 0.97, 1.0))
 
-# ---------------------------------------------------------------- 석재 블록 (엘리베이터는 북서쪽 복도 끝)
+# ---------------------------------------------------------------- 엘리베이터 홀 (남동쪽 석재 블록 안 = 10층 로비 입구)
+# 서쪽 승강로에 엘리베이터 2대(동쪽을 봄), 맞은편 동쪽 벽에 LOTTE CINEMA ◁10F|4/5/6관 사인,
+# 북쪽 면은 포스터 3칸 폭: 서쪽 2칸은 통째로 광고 포스터 벽, 동쪽 1칸이 로비로 나가는 입구,
+# 남쪽(엘리베이터를 보면 왼쪽)은 통창 + 그 앞에 상영작 브로마이드
 EL_U0, EL_U1, EL_V0, EL_V1 = U(285), U(400), V(690), V(840)
-box("EL_block", EL_U0, EL_U1, EL_V0, EL_V1, 0, LOBBY_H, "wall_stone")
-plane("SIGN_lotte_el", (EL_U0 + EL_U1) / 2, EL_V0, 3.75, 6.2, 1.55, "N", "sign_lotte", offset=0.02, merge=False)
+EH_U0, EH_U1 = EL_U0 + 2.4, WC_U0 - 0.15       # 홀 안쪽: 승강로 앞면 ~ 화장실 서벽 안쪽 면
+EH_V1, EH_H = EL_V1 - 0.3, 3.2                  # 남쪽 벽 안쪽 면, 천장 높이
+EH_CV = (EL_V0 + EH_V1) / 2                     # 엘리베이터·사인 중심
+EH_IN_U0 = EL_U0 + (EL_U1 - EL_U0) * 2 / 3      # 로비 쪽 입구 서쪽 끝 (그 서쪽은 광고 벽)
+box("EL_block", EL_U0, EH_U0, EL_V0, EL_V1, 0, LOBBY_H, "wall_stone")                       # 승강로
+box("EH_win_top", EH_U0, EL_U1, EH_V1, EL_V1, EH_H, LOBBY_H, "wall_stone", collide=False)    # 통창 위 (홀 천장 위)
+box("EH_glass", EH_U0, EH_U1, EL_V1 - 0.18, EL_V1 - 0.12, 0, EH_H, "glass", collide=True)
+box("EH_win_sill", EH_U0, EH_U1, EL_V1 - 0.25, EL_V1 - 0.05, 0, 0.25, "steel_dark")
+box("EH_win_head", EH_U0, EH_U1, EL_V1 - 0.25, EL_V1 - 0.05, EH_H - 0.15, EH_H, "steel_dark", collide=False)
+for i in range(5):
+    uu = EH_U0 + 0.04 + i * (EH_U1 - EH_U0 - 0.08) / 4
+    box(f"EH_mullion_{i}", uu - 0.04, uu + 0.04, EL_V1 - 0.21, EL_V1 - 0.09, 0, EH_H, "steel_dark", collide=False)
+box("EH_wall_n", EH_U0, EH_IN_U0, EL_V0, EL_V0 + 0.3, 0, EH_H, "wall_stone")                  # 광고 벽 (승강로에 이어서)
+box("EH_bulkhead", EH_U0, EL_U1, EL_V0, EL_V0 + 0.3, EH_H, LOBBY_H, "wall_stone", collide=False)   # 입구 위
+# 로비 쪽 광고 벽: 북쪽 면 서쪽 2칸 전체를 덮는 라이트박스 (포스터 아틀라스의 파란 포스터 두 장)
+AD_W = EH_IN_U0 - EL_U0 - 0.4
+AD_H = AD_W * 0.75
+box("EH_ad_frame", EL_U0 + 0.12, EH_IN_U0 - 0.12, EL_V0 - 0.12, EL_V0, 0.17, 0.33 + AD_H, "black_plastic", collide=False)
+plane("EH_ad", (EL_U0 + EH_IN_U0) / 2, EL_V0 - 0.12, 0.25 + AD_H / 2, AD_W, AD_H, "N", "posters", offset=0.005, merge=True, uv=(0, 0, 0.5, 0.5))
+box("EH_ceiling", EH_U0, EH_U1, EL_V0 + 0.3, EH_V1, EH_H, EH_H + 0.1, "ceiling_gray", collide=False)
+box("EH_floor_e", U(390) + 0.15, EH_U1, EL_V0, EH_V1, -0.2, 0.0, "floor_dark", floor=True, collide=False)   # 로비 바닥이 닿지 않는 동쪽 끝
+box("EH_clad_e", EH_U1 - 0.02, EH_U1, EL_V0, EH_V1, 0, EH_H, "wall_stone", collide=False)   # 화장실 흰 벽 위 석재 마감
+for i, vc in enumerate([EH_CV - 1.5, EH_CV + 1.5]):
+    box(f"EV_door_{i}", EH_U0, EH_U0 + 0.04, vc - 0.55, vc + 0.55, 0, 2.2, "metal", collide=False)
+    box(f"EV_seam_{i}", EH_U0 + 0.04, EH_U0 + 0.045, vc - 0.006, vc + 0.006, 0, 2.2, "black_plastic", collide=False)
+    box(f"EV_jamb_l{i}", EH_U0, EH_U0 + 0.1, vc - 0.68, vc - 0.55, 0, 2.32, "steel_dark", collide=False)
+    box(f"EV_jamb_r{i}", EH_U0, EH_U0 + 0.1, vc + 0.55, vc + 0.68, 0, 2.32, "steel_dark", collide=False)
+    box(f"EV_head_{i}", EH_U0, EH_U0 + 0.1, vc - 0.68, vc + 0.68, 2.2, 2.32, "steel_dark", collide=False)
+    box(f"EV_ind_{i}", EH_U0, EH_U0 + 0.04, vc - 0.25, vc + 0.25, 2.45, 2.65, "black_plastic", collide=False)
+    box(f"EV_ind_lit_{i}", EH_U0 + 0.04, EH_U0 + 0.045, vc - 0.12, vc + 0.12, 2.5, 2.6, "emit_warm", collide=False)
+    box(f"EV_sill_{i}", EH_U0, EH_U0 + 0.25, vc - 0.55, vc + 0.55, 0, 0.01, "metal", collide=False)
+# 호출 버튼 (두 엘리베이터 사이)
+box("EV_call", EH_U0, EH_U0 + 0.03, EH_CV - 0.06, EH_CV + 0.06, 1.0, 1.28, "metal", collide=False)
+box("EV_call_up", EH_U0 + 0.03, EH_U0 + 0.035, EH_CV - 0.03, EH_CV + 0.03, 1.17, 1.22, "emit_white", collide=False)
+box("EV_call_dn", EH_U0 + 0.03, EH_U0 + 0.035, EH_CV - 0.03, EH_CV + 0.03, 1.06, 1.11, "emit_white", collide=False)
+# 엘리베이터에서 내리면 바로 보이는 맞은편 사인 (◁ = 왼쪽(북쪽) 로비 입구)
+plane("SIGN_lotte_el", EH_U1, EH_CV, 2.05, 4.8, 1.2, "W", "sign_lotte", offset=0.03, merge=False)
+# 통창 앞 상영작 브로마이드 (입간판, 홀 안쪽을 봄)
+BR_CU, BR_V = (EH_U0 + EH_U1) / 2, EL_V1 - 1.1
+box("EH_bromide_base", BR_CU - 0.7, BR_CU + 0.7, BR_V - 0.13, BR_V + 0.17, 0, 0.08, "black_plastic")
+box("EH_bromide_board", BR_CU - 0.65, BR_CU + 0.65, BR_V, BR_V + 0.04, 0.08, 1.94, "black_plastic")
+plane("EH_bromide", BR_CU, BR_V, 1.01, 1.28, 1.84, "N", "posters", offset=0.005, merge=True, uv=poster_uv(2))   # 절찬상영중
+for i, vv in enumerate([EL_V0 + 2.6, EH_V1 - 2.6]):
+    cylinder(f"DL_eh_{i}", (EH_U0 + EH_U1) / 2, vv, EH_H - 0.02, EH_H, 0.1, "emit_white", seg=10)
+    light(f"LIGHT_eh_{i}", (EH_U0 + EH_U1) / 2, vv, EH_H - 0.05, kind="spot", angle=65, intensity=6.0, distance=7.0, color=(1, 0.92, 0.82))
+# 접속 시작 위치: 엘리베이터 앞, 맞은편 사인(동쪽)을 바라봄. yaw = atan2(dx, dz) 기준
+empty("SPAWN", EH_U0 + 2.0, EH_CV, 0.0, {"spawn": 1, "yaw": math.pi / 2})
 # 남쪽 외벽 동쪽 연결
 wall("W_south_e", U(290), SOUTH_V, U(290), EL_V1, 0, LOBBY_H, "wall_stone")
 wall("W_south_e2", U(290), EL_V1, EL_U0, EL_V1, 0, LOBBY_H, "wall_stone")
@@ -1132,12 +1147,7 @@ STD_CU = AC_U0 - 0.75
 box("STANDEE_base", STD_CU - 0.7, STD_CU + 0.7, SOUTH_V - 1.25, SOUTH_V - 0.95, 0, 0.08, "black_plastic")
 box("STANDEE_board", STD_CU - 0.65, STD_CU + 0.65, SOUTH_V - 1.12, SOUTH_V - 1.08, 0.08, 1.94, "black_plastic")
 plane("STANDEE", STD_CU, SOUTH_V - 1.12, 1.01, 1.28, 1.84, "N", "posters", offset=0.005, merge=True, uv=poster_uv(6))
-# 로비 북벽(4관 남쪽 블록) 포스터 라이트박스
-for i in range(3):
-    poster_box(f"P_lobby_{i}", 6.0 + i * 2.4, STRIP_V1, 1.75, "S", i + 1)
-# 석재 블록 북쪽 면 + 남쪽 로비 동벽(포스터 벽)
-for i, uc in enumerate([U(312), U(350), EL_U1 - 0.9]):
-    poster_box(f"P_el_n{i}", uc, EL_V0, 1.75, "N", 3 + i)
+# 승강로 서쪽 면 (남쪽 로비 동벽, 포스터 벽)
 for i, cv in enumerate([54.6, 56.4, 58.2]):
     poster_box(f"P_el_w{i}", EL_U0, cv, 1.75, "W", 5 + i)
 
@@ -1240,7 +1250,11 @@ if "--render" in ARGS:
         "top": ((19.5, -33, 90), (0, 0, 0), 60, True),
         "theater_back": ((AUD_U0 + 1.0, -(AUD_V0 + 2.0), 6.2), (math.radians(78), 0, math.radians(-102)), 70, False),
         "theater_front": ((AUD_U1 - 3, -(AUD_V1 - 1.5), 1.8), (math.radians(88), 0, math.radians(65)), 75, False),
-        "elevator_hall": ((2.3, -(V(45) + 9.0), 1.6), (math.radians(88), 0, 0), 70, False),
+        "elevator_hall": ((EH_U1 - 0.6, -EH_CV, 1.6), (math.radians(88), 0, math.radians(90)), 75, False),
+        "elevator_sign": ((EH_U0 + 0.5, -EH_CV, 1.6), (math.radians(88), 0, math.radians(-90)), 75, False),
+        "elevator_window": ((EH_U0 + 3.0, -(EL_V0 + 1.0), 1.6), (math.radians(86), 0, math.radians(180)), 75, False),
+        "elevator_entrance": ((EH_IN_U0 - 1.5, -(EL_V0 - 8.0), 1.6), (math.radians(88), 0, math.radians(180)), 70, False),
+        "exit4_westcor": ((1.6, -(V(45) + 7.0), 1.6), (math.radians(88), 0, math.radians(-22)), 70, False),
         "escalator": ((ES_CU + 1.6, -(ES_V0 - 5.0), 2.2), (math.radians(72), 0, math.radians(180)), 75, False),
         "lobby_south": ((10.2, -(SOUTH_V - 8.0), 1.5), (math.radians(88), 0, math.radians(172)), 70, False),
         "lobby_north": ((10.0, -(SOUTH_V - 4.5), 1.5), (math.radians(88), 0, math.radians(14)), 70, False),
