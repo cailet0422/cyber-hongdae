@@ -7,7 +7,8 @@ const { CinemaServer } = require('../server');
 const { SUB_EXT, VIDEO_EXT, IMAGE_EXT } = require('../server/media');
 const { makeAdminApi, ADMIN_EVENTS } = require('../server/admin-api');
 
-const DATA_DIR = process.env.CYBER_DATA_DIR || path.resolve(__dirname, '..', 'data');
+// 설치판: 설치 폴더는 쓰기 권한이 없을 수 있으므로 사용자 폴더(%APPDATA%)에 저장
+const DATA_DIR = process.env.CYBER_DATA_DIR || (app.isPackaged ? path.join(app.getPath('userData'), 'data') : path.resolve(__dirname, '..', 'data'));
 let win = null;
 let server = null;
 

@@ -49,20 +49,29 @@ The host opens a server from their own PC with one click. Friends then **just op
 
 ## 💾 Installation (Windows)
 
-1. **Install Node.js**: get the **LTS** version from <https://nodejs.org> and keep clicking *Next*.
-2. **Download this project**: click **`<> Code` → Download ZIP** and extract it to a simple path such as `D:\cyberhongdae`. Alternatively:
+The installer contains **everything**: the host dashboard, the video tools (ffmpeg, yt-dlp) and the tunnel tool (cloudflared). No Node.js or other setup is needed.
 
-   ```bash
-   git clone https://github.com/cailet0422/cyber-hongdae.git
-   ```
+1. Go to the **[📥 Releases page](https://github.com/cailet0422/cyber-hongdae/releases/latest)** and download **`CyberHongdae-Setup-x.x.x.exe`** (about 200 MB).
+2. Run it.
+   - If Windows SmartScreen appears, click **More info → Run anyway**. It appears because the app is not code-signed.
+   - Click **Next → Install → Finish**.
+3. Start **「사이버 홍대입구 관리자」** (*Cyber Hongdae host*) from the desktop or the Start menu.
 
-3. **Double-click `처음 설치.bat`** ("first-time setup"). It does the following:
-   - installs the npm packages;
-   - prepares Electron;
-   - downloads ffmpeg, yt-dlp and cloudflared from their official sources into `tools/bin`;
-   - creates a desktop shortcut called **「사이버 홍대입구 관리자」** (the host dashboard).
+Notes:
 
-> If Windows SmartScreen appears, click **More info → Run anyway**.
+- No admin rights are required; the app installs into your user folder.
+- Data is stored in `%APPDATA%\cyber-hongdae\data`.
+- To uninstall, use **Settings → Apps**.
+- To update, run a newer installer over the existing install; your settings are kept.
+
+**From source (developers)**: install Node.js LTS, clone the repo and run `처음 설치.bat` (first-time setup), or build the installer yourself:
+
+```bash
+cd app
+npm install
+node scripts/setup-tools.js
+npm run dist
+```
 
 ---
 
@@ -165,19 +174,13 @@ Every viewer can **upload their own 3D model and use it as their avatar**, and e
 
 - **Lag when many people join**: every viewer streams the video from the host PC. 1080p needs about 5 Mbps per viewer, so 30 viewers need about 150 Mbps of upload. Set the max quality to 720p in Settings.
 - **"Port already in use"**: change the port, for example to 7778.
-- **YouTube fails**: update yt-dlp from `tools\bin`:
+- **YouTube fails**: reinstall the latest release, or update yt-dlp in `<install folder>\resources\tools\bin`:
 
   ```bash
   yt-dlp.exe -U
   ```
 
-- **Dashboard won't start**: in `app`, run:
-
-  ```bash
-  node scripts/fix-electron.js
-  ```
-
-- **Headless server**: run `서버만 실행 (GUI 없이).bat`. A local-only web dashboard is available at `http://localhost:7777/admin?token=local-admin`.
+- **Headless server** (source install): run `서버만 실행 (GUI 없이).bat`. A local-only web dashboard is available at `http://localhost:7777/admin?token=local-admin`.
 
 ## 🛠 For developers
 

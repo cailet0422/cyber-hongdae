@@ -1,6 +1,6 @@
 {
   "name": "cyber-hongdae",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "사이버 홍대입구 - 롯데시네마 홍대입구 10층과 4관 광음시네마를 재현한 온라인 단체관람 3D 공간",
   "main": "dashboard/main.js",
   "private": true,
@@ -9,7 +9,8 @@
     "server": "node server/standalone.js",
     "prepare-assets": "node scripts/prepare-assets.js",
     "setup-tools": "node scripts/setup-tools.js",
-    "bots": "node scripts/bots.js"
+    "bots": "node scripts/bots.js",
+    "dist": "electron-builder --win nsis --x64 --publish never"
   },
   "dependencies": {
     "@pixiv/three-vrm": "^3.5.5",
@@ -23,7 +24,8 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "electron": "^38.0.0"
+    "electron": "^38.0.0",
+    "electron-builder": "^26.15.3"
   },
   "allowScripts": {
     "electron@38.8.6": true
@@ -32,5 +34,67 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/cailet0422/cyber-hongdae.git"
+  },
+  "author": "cailet0422",
+  "homepage": "https://github.com/cailet0422/cyber-hongdae",
+  "build": {
+    "appId": "com.cailet0422.cyberhongdae",
+    "productName": "CyberHongdae",
+    "copyright": "Copyright (c) 2026 cailet0422 (MIT)",
+    "directories": {
+      "output": "../dist",
+      "buildResources": "build"
+    },
+    "asar": false,
+    "files": [
+      "package.json",
+      "dashboard/**",
+      "server/**",
+      "client/**",
+      "!client/assets/models/**",
+      "!client/assets/poses/**"
+    ],
+    "extraResources": [
+      {
+        "from": "../tools/bin",
+        "to": "tools/bin",
+        "filter": [
+          "ffmpeg.exe",
+          "ffprobe.exe",
+          "yt-dlp.exe",
+          "cloudflared.exe"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "dashboard/renderer/icon.ico",
+      "artifactName": "CyberHongdae-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "사이버 홍대입구 관리자",
+      "uninstallDisplayName": "사이버 홍대입구",
+      "installerLanguages": [
+        "ko_KR",
+        "en_US"
+      ],
+      "language": "1042",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "installerIcon": "dashboard/renderer/icon.ico",
+      "uninstallerIcon": "dashboard/renderer/icon.ico"
+    }
   }
 }
