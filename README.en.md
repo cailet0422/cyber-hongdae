@@ -1,5 +1,8 @@
 # 🎬 Cyber Hongdae (사이버 홍대입구)
 
+<p align="center"><a href="https://github.com/cailet0422/cyber-hongdae/releases/latest"><img src="https://img.shields.io/github/v/release/cailet0422/cyber-hongdae?style=for-the-badge&logo=windows&logoColor=white&color=e3192a&label=Download" alt="Download the latest version" height="40"></a></p>
+<p align="center">One Windows installer · updates itself automatically</p>
+
 **[한국어 README](README.md)**
 
 A 3D **online watch-party space** that recreates the 10th-floor lobby of LOTTE CINEMA Hongik Univ. (Hongdae) in Seoul and its **Screen 4 "Kwang-eum Cinema"**.

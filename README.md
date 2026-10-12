@@ -1,5 +1,8 @@
 # 🎬 사이버 홍대입구
 
+<p align="center"><a href="https://github.com/cailet0422/cyber-hongdae/releases/latest"><img src="https://img.shields.io/github/v/release/cailet0422/cyber-hongdae?style=for-the-badge&logo=windows&logoColor=white&color=e3192a&label=%EB%8B%A4%EC%9A%B4%EB%A1%9C%EB%93%9C" alt="최신 버전 다운로드" height="40"></a></p>
+<p align="center">Windows 설치 파일 하나로 끝 · 받은 뒤에는 자동 업데이트</p>
+
 **[English README](README.en.md)**
 
 롯데시네마 홍대입구 10층 로비와 **4관 광음시네마**를 3D로 재현한 **온라인 단체관람 공간**입니다.
