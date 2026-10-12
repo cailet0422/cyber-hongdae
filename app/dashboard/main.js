@@ -55,6 +55,7 @@ function buildApi() {
     // 자동 업데이트
     updateState: () => ({ ...updater.state, enabled: server.config.autoUpdate !== false }),
     checkUpdate: () => updater.check(),
+    dismissUpdateNotice: () => updater.dismissNotice(),
     setAutoUpdate: (on) => { server.setConfig({ autoUpdate: !!on }); updater.setEnabled(); return !!on; },
     installUpdate: async () => {
       if (updater.state.status !== 'ready') return false;
@@ -121,7 +122,12 @@ app.whenReady().then(() => {
   createWindow();
   if (process.argv.includes('--autostart')) server.start().catch(() => {});
 });
-app.on('window-all-closed', async () => { if (server?.running) await server.stop(); app.quit(); });
+app.on('window-all-closed', async () => {
+  if (server?.running) await server.stop();
+  // 받아 둔 업데이트가 종료 시 설치되면 설치 진행 창을 띄우고, 창이 뜰 시간을 잠깐 준 뒤 종료
+  if (updater?.prepareQuitInstall()) await new Promise((r) => setTimeout(r, 700));
+  app.quit();
+});
 
 // 예상치 못한 오류로 서버 전체가 꺼지지 않도록 기록만 남긴다
 process.on('uncaughtException', (e) => server?.log('예상치 못한 오류: ' + (e?.stack || e)));

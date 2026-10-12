@@ -128,4 +128,13 @@ pre#logs { max-height: 300px; overflow: auto; font-size: 12px; color: var(--dim)
 .stick-cfg .s { background: var(--panel2); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
 
 .update-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #1d3b2a; border: 1px solid #2ecc71; color: #c9f7dc; border-radius: 12px; padding: 10px 14px; margin-bottom: 16px; }
+.update-banner[data-kind="downloading"] { background: #16233d; border-color: var(--blue); color: #d4e0ff; }
+.ub-body { flex: 1; min-width: 0; }
+.ub-prog { height: 6px; margin-top: 8px; }
+.ub-prog i { background: var(--blue); transition: width .4s; }
+.update-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, .7); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.update-overlay-card { width: 500px; text-align: center; margin: 0; }
+.prog.indet { position: relative; height: 6px; margin-top: 14px; }
+.prog.indet i { position: absolute; width: 35%; animation: prog-indet 1.2s ease-in-out infinite; }
+@keyframes prog-indet { from { left: -35%; } to { left: 100%; } }
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #000; border: 1px solid var(--line); padding: 12px 20px; border-radius: 12px; z-index: 99; box-shadow: 0 10px 40px rgba(0,0,0,.6); }

@@ -390,32 +390,58 @@ $('cfgSave').onclick = async () => {
 $('openData').onclick = () => call('openDataDir');
 
 // ------------------------------------------------------------------ 자동 업데이트
+let updateBannerClosed = '';   // 사용자가 닫은 배너 종류 (같은 종류는 다시 띄우지 않음)
+let updatedToastShown = false;
+const mb = (b) => (b / 1048576).toFixed(b < 10485760 ? 1 : 0);
 function renderUpdate(u) {
   if (!u) return;
   $('verCur').textContent = 'v' + u.version;
   const pct = Math.round((u.progress || 0) * 100);
+  const size = u.total ? ` (${mb(u.transferred || 0)} / ${mb(u.total)}MB)` : '';
   const text = {
     dev: '개발 버전 (설치판에서만 자동 업데이트)',
     idle: '',
     checking: '새 버전 확인 중…',
     latest: '✅ 최신 버전입니다',
-    downloading: `⬇ 새 버전 v${u.latest} 내려받는 중 ${pct}%`,
+    downloading: `⬇ 새 버전 v${u.latest} 내려받는 중 ${pct}%${size}`,
     ready: `🎉 새 버전 v${u.latest} 준비 완료 — 프로그램을 닫으면 자동으로 설치됩니다`,
+    installing: `⏳ v${u.latest} 설치를 시작합니다…`,
     error: '⚠ 업데이트 확인 실패: ' + (u.error || ''),
   }[u.status] || '';
   $('verStatus').textContent = text;
   $('verProg').classList.toggle('hidden', u.status !== 'downloading');
   $('verProgBar').style.width = pct + '%';
   $('verInstall').classList.toggle('hidden', u.status !== 'ready');
-  $('verCheck').disabled = u.status === 'dev' || u.status === 'checking' || u.status === 'downloading';
+  $('verCheck').disabled = u.status === 'dev' || u.status === 'checking' || u.status === 'downloading' || u.status === 'installing';
   if (u.enabled != null) $('verAuto').checked = u.enabled;
-  $('updateBanner').classList.toggle('hidden', u.status !== 'ready');
-  $('updateBannerText').textContent = `🎉 새 버전 v${u.latest}이(가) 준비되었습니다. 지금 설치하거나, 프로그램을 닫을 때 자동으로 설치됩니다.`;
+
+  // 모든 탭 위에 보이는 배너: 내려받는 중(진행률) / 설치 준비 완료 / 방금 업데이트됨
+  const kind = u.status === 'downloading' ? 'downloading' : u.status === 'ready' ? 'ready' : u.justUpdated ? 'updated' : '';
+  const banner = $('updateBanner');
+  banner.dataset.kind = kind;
+  banner.classList.toggle('hidden', !kind || updateBannerClosed === kind);
+  $('updateBannerText').textContent = {
+    downloading: `⬇ 새 버전 v${u.latest} 내려받는 중… ${pct}%${size}`,
+    ready: `🎉 새 버전 v${u.latest}이(가) 준비되었습니다. 지금 설치하거나, 프로그램을 닫을 때 자동으로 설치됩니다.`,
+    updated: u.justUpdated ? `✅ v${u.justUpdated.to}로 업데이트되었습니다!${u.justUpdated.from ? ` (이전 v${u.justUpdated.from})` : ''}` : '',
+  }[kind] || '';
+  $('updateBannerProg').classList.toggle('hidden', kind !== 'downloading');
+  $('updateBannerBar').style.width = pct + '%';
+  $('updateBannerBtn').classList.toggle('hidden', kind !== 'ready');
+  $('updateBannerNotes').classList.toggle('hidden', kind !== 'updated');
+  $('updateBannerNotes').onclick = () => u.justUpdated && call('openExternal', `https://github.com/cailet0422/cyber-hongdae/releases/tag/v${u.justUpdated.to}`);
+  if (kind === 'updated' && !updatedToastShown) { updatedToastShown = true; toast(`✅ v${u.justUpdated.to} 업데이트 완료`, 4000); }
+  $('updateOverlay').classList.toggle('hidden', u.status !== 'installing');
 }
 const installUpdate = async () => { const ok = await call('installUpdate'); if (!ok) toast('업데이트를 나중에 설치합니다'); };
 $('verCheck').onclick = () => call('checkUpdate');
 $('verInstall').onclick = installUpdate;
 $('updateBannerBtn').onclick = installUpdate;
+$('updateBannerClose').onclick = () => {
+  updateBannerClosed = $('updateBanner').dataset.kind;
+  $('updateBanner').classList.add('hidden');
+  if (updateBannerClosed === 'updated') call('dismissUpdateNotice');
+};
 $('verAuto').onchange = async () => { await call('setAutoUpdate', $('verAuto').checked); toast($('verAuto').checked ? '자동 업데이트를 켰습니다' : '자동 업데이트를 껐습니다'); };
 bridge.on('update', renderUpdate);
 call('updateState').then(renderUpdate).catch(() => {});
