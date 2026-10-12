@@ -104,6 +104,7 @@ $('addUrl').onclick = async () => {
 };
 $('clearPl').onclick = () => confirm('재생목록을 모두 비울까요?') && call('clearPlaylist');
 $('clearCache').onclick = async () => { await call('clearCache'); toast('사용하지 않는 캐시를 정리했습니다'); };
+$('openCache').onclick = () => call('openCacheDir');
 
 // 드래그&드롭
 const dz = document.body;
@@ -143,6 +144,8 @@ function renderPlaylist() {
   $('plEmpty').classList.toggle('hidden', pl.length > 0);
   $('plCount').textContent = pl.length ? `${pl.length}개` : '';
   $('cacheInfo').textContent = `캐시 ${fmtBytes(S.media.cacheBytes || 0)}`;
+  $('cacheInfo').title = S.media.cacheDir ? `캐시 폴더: ${S.media.cacheDir}` : '';
+  $('openCache').title = $('cacheInfo').title;
   const cur = S.playback.itemId;
   el.innerHTML = pl.map((it, i) => `
     <div class="pl-item ${it.id === cur ? 'cur' : ''}" data-id="${it.id}">

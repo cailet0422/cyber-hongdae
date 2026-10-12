@@ -18,10 +18,11 @@ const extOf = (p) => (p.split(/[?#]/)[0].split('.').pop() || '').toLowerCase();
 const natural = (a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
 
 class MediaManager extends EventEmitter {
-  constructor({ dataDir, settings }) {
+  constructor({ dataDir, cacheDir, settings, log }) {
     super();
     this.dataDir = dataDir;
-    this.cacheDir = path.join(dataDir, 'cache');
+    this.cacheDir = cacheDir || path.join(dataDir, 'cache');
+    this.log = log || (() => {});
     this.subDir = path.join(dataDir, 'subs');
     fs.mkdirSync(this.cacheDir, { recursive: true });
     fs.mkdirSync(this.subDir, { recursive: true });
@@ -34,6 +35,38 @@ class MediaManager extends EventEmitter {
     this.running = 0;
     this.currentIndex = 0;
     this._load();
+    // 캐시 폴더가 바뀌었으면(설치판: 설치 폴더 옆) 예전 폴더에 있던 영상을 옮겨 둔다
+    const oldCache = path.join(dataDir, 'cache');
+    if (path.resolve(oldCache) !== path.resolve(this.cacheDir)) setImmediate(() => this._migrateCache(oldCache));
+  }
+
+  // 예전 캐시 폴더(C: 사용자 폴더)의 영상을 새 캐시 폴더로 백그라운드에서 옮긴다.
+  // 같은 드라이브면 이름만 바꾸고, 다른 드라이브면 복사한 뒤 원본을 지운다. 중간에 꺼져도 다음 실행 때 이어서 옮김
+  async _migrateCache(oldDir) {
+    let files = [];
+    try { files = fs.readdirSync(oldDir).map((f) => path.join(oldDir, f)).filter((f) => fs.statSync(f).isFile()); } catch { return; }
+    if (!files.length) { try { fs.rmdirSync(oldDir); } catch {} return; }
+    this.log(`영상 캐시 ${files.length}개를 새 캐시 폴더로 옮기는 중… → ${this.cacheDir}`);
+    let moved = 0;
+    for (const src of files) {
+      const dst = path.join(this.cacheDir, path.basename(src));
+      try {
+        try {
+          await fs.promises.rename(src, dst);
+        } catch (e) {
+          if (e.code !== 'EXDEV') throw e;
+          await fs.promises.copyFile(src, dst);
+        }
+        for (const it of this.items.values()) if (it.localPath === src) it.localPath = dst;
+        moved++;
+        await fs.promises.unlink(src).catch(() => {});   // 재생 중이라 못 지우면 다음 실행 때 다시 시도
+      } catch (e) {
+        this.log(`캐시 옮기기 실패: ${path.basename(src)} (${e.code || e.message})`);
+      }
+    }
+    this.save();
+    try { fs.rmdirSync(oldDir); } catch {}
+    this.log(`영상 캐시 ${moved}개를 옮겼습니다`);
   }
 
   // ------------------------------------------------------------ 저장/불러오기

@@ -60,7 +60,8 @@ The installer contains **everything**: the host dashboard, the video tools (ffmp
 Notes:
 
 - No admin rights are required; the app installs into your user folder.
-- Data is stored in `%APPDATA%\cyber-hongdae\data`.
+- Settings and the playlist are stored in `%APPDATA%\cyber-hongdae\data`.
+- Downloaded/converted movie files (the cache) go to a `…\CyberHongdae-cache` folder **next to the install folder** (same drive), not the C: user folder. Open it with **📂 캐시 폴더** on the media tab.
 - To uninstall, use **Settings → Apps**.
 - **Auto-update**: the app checks GitHub Releases on startup and every 6 hours, downloads new versions in the background, and installs them when you close it. To install right away, use the **지금 재시작하고 업데이트** (*restart and update now*) button. To turn this off or check manually, go to **Settings → 프로그램 업데이트** (*program update*).
 

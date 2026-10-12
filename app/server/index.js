@@ -58,7 +58,7 @@ function deepMerge(a, b) {
 }
 
 class CinemaServer extends EventEmitter {
-  constructor({ dataDir }) {
+  constructor({ dataDir, cacheDir }) {
     super();
     this.dataDir = dataDir;
     fs.mkdirSync(dataDir, { recursive: true });
@@ -68,7 +68,7 @@ class CinemaServer extends EventEmitter {
     this.bans = readJson(path.join(dataDir, 'bans.json'), []);
     this.avatarDir = path.join(dataDir, 'avatars');
     fs.mkdirSync(this.avatarDir, { recursive: true });
-    this.media = new MediaManager({ dataDir, settings: this.config.media });
+    this.media = new MediaManager({ dataDir, cacheDir, settings: this.config.media, log: (m) => this.log(m) });
     this.playback = new Playback(this.media);
     this.users = new Map();
     this.seats = new Map(); // seatId → userId
@@ -134,7 +134,7 @@ class CinemaServer extends EventEmitter {
     if (ready !== this._lobbyReady) { this._lobbyReady = ready; this.broadcast({ t: 'cfg', d: this.publicConfig() }); }
   }
   mediaState() {
-    return { playlist: this.media.list(), lobby: this.lobbyItems(), lobbyItemId: this.config.lobby.itemId, cacheBytes: this._cacheBytes() };
+    return { playlist: this.media.list(), lobby: this.lobbyItems(), lobbyItemId: this.config.lobby.itemId, cacheBytes: this._cacheBytes(), cacheDir: this.media.cacheDir };
   }
   _cacheBytes() {
     if (!this._cb || Date.now() - this._cb.t > 5000) this._cb = { t: Date.now(), v: this.media.cacheSize() };

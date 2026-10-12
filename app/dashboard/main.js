@@ -10,6 +10,24 @@ const { createUpdater } = require('./updater');
 
 // 설치판: 설치 폴더는 쓰기 권한이 없을 수 있으므로 사용자 폴더(%APPDATA%)에 저장
 const DATA_DIR = process.env.CYBER_DATA_DIR || (app.isPackaged ? path.join(app.getPath('userData'), 'data') : path.resolve(__dirname, '..', 'data'));
+// 상영 영상 캐시: C 드라이브 사용자 폴더 대신 설치 폴더 옆 "<설치 폴더>-cache" (같은 드라이브).
+// 설치 폴더 안에 두면 업데이트할 때 설치 프로그램이 폴더를 통째로 임시 폴더(C:)로 옮긴 뒤 지워 버린다.
+// 쓸 수 없는 위치(Program Files 등)면 예전처럼 데이터 폴더 안 cache를 쓴다.
+function pickCacheDir() {
+  if (process.env.CYBER_CACHE_DIR) return process.env.CYBER_CACHE_DIR;
+  if (!app.isPackaged) return null;
+  const dir = path.dirname(process.execPath) + '-cache';
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    const probe = path.join(dir, '.write-test');
+    fs.writeFileSync(probe, '');
+    fs.unlinkSync(probe);
+    return dir;
+  } catch {
+    return null;
+  }
+}
+const CACHE_DIR = pickCacheDir();
 let win = null;
 let server = null;
 let updater = null;
@@ -17,7 +35,7 @@ let updater = null;
 function send(ch, data) { if (win && !win.isDestroyed()) win.webContents.send('evt', ch, data); }
 
 function createServer() {
-  server = new CinemaServer({ dataDir: DATA_DIR });
+  server = new CinemaServer({ dataDir: DATA_DIR, cacheDir: CACHE_DIR });
   for (const ev of ADMIN_EVENTS) server.on(ev, (d) => send(ev, d));
   server.on('log', (l) => console.log(l));
   updater = createUpdater({
@@ -50,6 +68,7 @@ function buildApi() {
     ...pickers,
     openExternal: (url) => /^https?:\/\//.test(url) && shell.openExternal(url),
     openDataDir: () => shell.openPath(DATA_DIR),
+    openCacheDir: () => shell.openPath(server.media.cacheDir),
     copy: (text) => clipboard.writeText(String(text)),
     qr: (text) => QRCode.toDataURL(String(text), { margin: 1, width: 360, color: { dark: '#111111', light: '#ffffff' } }),
     // 자동 업데이트
