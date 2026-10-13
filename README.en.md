@@ -5,7 +5,7 @@
 
 **[한국어 README](README.md)**
 
-A 3D **online watch-party space** that recreates the 10th-floor lobby of LOTTE CINEMA Hongik Univ. (Hongdae) in Seoul and its **Screen 4 "Kwang-eum Cinema"**.
+A 3D **online watch-party space** set in **EOTTE CINEMA**, a fictional cinema modeled on the 10th-floor lobby of LOTTE CINEMA Hongik Univ. (Hongdae) in Seoul, and its **Screen 4 "Pok-eum Cinema"**.
 
 The host opens a server from their own PC with one click. Friends then **just open a link in their browser**, with no install, and walk in as a character. Everyone watches the same movie in sync, chats, waves light sticks and sits in theater seats.
 
@@ -47,6 +47,8 @@ The host opens a server from their own PC with one click. Friends then **just op
   - Playlist control.
   - Kick, ban and mute; announcements.
   - Lobby LED video; Screen 4 sign text.
+  - Posters: replace any of the 8 poster light boxes in the map with your own images.
+- **Original default posters**: 8 fictional movie posters drawn from scratch for this project.
 
 ---
 
@@ -119,6 +121,12 @@ In the **🎬 상영 관리** (*Playlist*) tab:
 
 - **Screen 4 entrance sign**: hall name, floor, title (auto = currently playing), messages in Korean and English, text color, clock, background image. A live preview is shown.
 - **Lobby LED wall**: loops a video, image or link. With nothing selected it shows a poster slideshow and now-playing info.
+
+## 🖼️ Posters
+
+In the **🖼️ 포스터** (*Posters*) tab you can replace each of the **8 posters** used by the light boxes around the map and the lobby LED slideshow. Click **바꾸기** (*Change*) or drop an image onto a slot; everyone connected sees the change right away. **기본으로** (*Default*) restores a slot. Portrait 7:10 images (e.g. 700×1000) fit best; other ratios are center-cropped. The 8 default posters are original fictional movies drawn by `app/blender/make_posters.py`.
+
+![Posters tab](docs/images/dashboard_posters.png)
 
 ## 👮 Moderation
 
@@ -214,6 +222,7 @@ Rebuild the map:
 ```bash
 cd app/blender
 python make_textures.py
+python make_posters.py
 python compose_ai.py
 blender -b -P build_cinema.py -- --render
 ```
@@ -221,8 +230,8 @@ blender -b -P build_cinema.py -- --render
 ## 📜 License & notices
 
 - **Code and original assets** (original avatars, map build scripts, generated textures) are released under the [MIT License](LICENSE).
-- This is a **non-commercial fan project** and is **not affiliated** with LOTTE Cinema / LOTTE Cultureworks or with the creators and producers of *K-ON!*. "LOTTE CINEMA", "Sweet#", "광음시네마" and *K-ON!* are names and trademarks of their respective owners.
-- The movie posters in `poster/` are copyrighted by their respective owners and are used on the poster light boxes in the map.
-- Photo and illustration textures (sign backgrounds, graffiti, night city, menu photos, carpet and stone tiles, fictional posters) were generated with OpenAI Codex (gpt-6.1-sol).
+- This is a **non-commercial fan project** and is **not affiliated** with LOTTE Cinema / LOTTE Cultureworks or with the creators and producers of *K-ON!*. The map is modeled on LOTTE CINEMA Hongdae, but "EOTTE CINEMA (어데시네마)" and "폭음시네마" in the map are fictional names. "Sweet#" and *K-ON!* are names and trademarks of their respective owners.
+- The 8 default posters (fictional movies) were drawn from scratch by `make_posters.py`. Images uploaded in the Posters tab belong to whoever uploads them.
+- Photo and illustration textures (sign backgrounds, graffiti, night city, menu photos, carpet and stone tiles) were generated with OpenAI Codex (gpt-6.1-sol).
 - **Libraries**: three.js (MIT), three-vrm (MIT), three-mesh-bvh (MIT), hls.js (Apache-2.0), Express (MIT), ws (MIT), Electron (MIT), iconv-lite (MIT), qrcode (MIT), nat-api (MIT).
 - **Tools downloaded at setup time**: ffmpeg (LGPL/GPL), yt-dlp (Unlicense), cloudflared (Apache-2.0), Tailscale.
