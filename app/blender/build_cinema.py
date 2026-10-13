@@ -1,4 +1,4 @@
-# 사이버 홍대입구 - 롯데시네마 홍대입구 10층 & 4관(광음시네마) 절차적 생성 스크립트
+# 사이버 홍대입구 - 어데시네마 10층 & 4관(폭음시네마) 절차적 생성 스크립트 (롯데시네마 홍대입구점이 모티브)
 #
 # 실행:  blender -b -P build_cinema.py -- [--render]
 # 결과:  ../client/assets/map/cinema.glb, ./cinema.blend, (옵션) ./preview_*.png
@@ -138,13 +138,14 @@ make_mat("fridge_lit", color=(0.85, 0.9, 0.95), rough=0.3, emit=(0.8, 0.9, 1.0),
 # 텍스처 사인(발광)
 make_mat("sign_sweet", tex="sign_sweet.jpg", emit=(1, 1, 1), emit_strength=2.5, emit_tex=True)
 make_mat("menu_boards", tex="menu_boards_ai.png" if tex_path("menu_boards_ai.png") else "menu_boards.jpg", emit=(1, 1, 1), emit_strength=1.4, emit_tex=True)
-make_mat("sign_lotte", tex="sign_lotte.png", alpha_tex=True, emit=(1, 1, 1), emit_strength=1.5, emit_tex=True)
-make_mat("sign_lotte_r", tex="sign_lotte_r.png", alpha_tex=True, emit=(1, 1, 1), emit_strength=1.5, emit_tex=True)
+make_mat("sign_eotte", tex="sign_eotte.png", alpha_tex=True, emit=(1, 1, 1), emit_strength=1.5, emit_tex=True)
+make_mat("sign_eotte_r", tex="sign_eotte_r.png", alpha_tex=True, emit=(1, 1, 1), emit_strength=1.5, emit_tex=True)
 make_mat("sign_exit", tex="sign_exit.jpg", emit=(1, 1, 1), emit_strength=2.0, emit_tex=True)
 make_mat("sign_exit_l", tex="sign_exit_l.jpg", emit=(1, 1, 1), emit_strength=2.0, emit_tex=True)
 make_mat("sign_exit_door", tex="sign_exit_door.jpg", emit=(1, 1, 1), emit_strength=2.0, emit_tex=True)
 make_mat("kiosk_screens", tex="kiosk_screens.jpg", emit=(1, 1, 1), emit_strength=1.2, emit_tex=True)
-make_mat("posters", tex="posters_ai.jpg" if tex_path("posters_ai.jpg") else "posters.jpg", emit=(1, 1, 1), emit_strength=0.9, emit_tex=True)
+# make_posters.py 기본 포스터 아틀라스 (게임에서는 클라이언트가 서버의 포스터 설정으로 교체)
+make_mat("posters", tex="posters.jpg", emit=(1, 1, 1), emit_strength=0.9, emit_tex=True)
 make_mat("city_night", tex="city_night_ai.jpg" if tex_path("city_night_ai.jpg") else "city_night.jpg", emit=(1, 1, 1), emit_strength=1.0, emit_tex=True)
 make_mat("graffiti", tex="graffiti_ai.jpg", rough=0.9) if tex_path("graffiti_ai.jpg") else make_mat("graffiti", tex="graffiti.png", alpha_tex=True, rough=0.9)
 make_mat("sign_babyseat", tex="sign_babyseat.png", alpha_tex=True, emit=(1, 1, 1), emit_strength=1.0, emit_tex=True)
@@ -154,7 +155,7 @@ make_mat("sign_5_door", tex="sign_5_door.png", alpha_tex=True, emit=(1, 1, 1), e
 make_mat("sign_6", tex="sign_6.png", alpha_tex=True, emit=(1, 1, 1), emit_strength=1.5, emit_tex=True)
 make_mat("sign_wc", tex="sign_wc.png", alpha_tex=True, emit=(1, 1, 1), emit_strength=1.2, emit_tex=True)
 make_mat("sign_hydrant", tex="sign_hydrant.png", rough=0.4)
-make_mat("sign_kwangeum", tex="sign_kwangeum.png", alpha_tex=True, rough=0.6)
+make_mat("sign_pokeum", tex="sign_pokeum.png", alpha_tex=True, rough=0.6)
 make_mat("glow_cone", tex="glow_cone.png", alpha_tex=True, emit=(1, 1, 1), emit_strength=1.5, emit_tex=True)
 make_mat("sign_down", tex="sign_down.png", alpha_tex=True, emit=(1, 1, 1), emit_strength=0.9, emit_tex=True)
 make_mat("kiosk_atlas", tex="kiosk_atlas.jpg", emit=(1, 1, 1), emit_strength=0.7, emit_tex=True)
@@ -504,7 +505,7 @@ box("E_in_east", IN_U1, IN_U1 + 0.3, V(45), V(220), 0, COR_H, "wall_charcoal")  
 box("F_entry_in", IN_U0, IN_U1, V(45), V(265), -0.2, 0.0, "carpet_dark", floor=True, collide=False)
 # 북쪽 복도 서쪽 끝 막음 (입장 복도: 입구 통로 → 북쪽 복도 → 스크린 옆 북쪽 문)
 wall("E_cor_nend", U(330), V(45), U(330), AUD_V0 - TH, 0, COR_H, "wall_charcoal")
-# 4관 출구 파사드 (v=V(270)) - 문 개구부 U(398)~U(428). 문 왼쪽은 Sweet# 옆 직원 대기공간, 광음시네마 벽 오른쪽이 입구 통로
+# 4관 출구 파사드 (v=V(270)) - 문 개구부 U(398)~U(428). 문 왼쪽은 Sweet# 옆 직원 대기공간, 폭음시네마 벽 오른쪽이 입구 통로
 DOOR_U0, DOOR_U1 = AUD_U1 + TH + 0.25, U(432) - 0.1
 FAC_V = V(268)
 wall_with_openings("E_facade", "u", FAC_V, AUD_U1 + TH, U(435) + 0.3, 0, LOBBY_H, "wall_stone",
@@ -512,12 +513,12 @@ wall_with_openings("E_facade", "u", FAC_V, AUD_U1 + TH, U(435) + 0.3, 0, LOBBY_H
 # 열린 철문 두 짝(장식)
 box("E_door_l", DOOR_U0, DOOR_U0 + 0.06, FAC_V + 0.2, FAC_V + 1.2, 0, 2.35, "metal", collide=False)
 box("E_door_frame_t", DOOR_U0, DOOR_U1, FAC_V - 0.22, FAC_V + 0.22, 2.35, 2.4, "steel_dark", collide=False)
-# 광음시네마 세로 글씨 + 루버 (문 오른쪽 기둥면)
+# 폭음시네마 세로 글씨 + 루버 (문 오른쪽 기둥면)
 box("E_louver_bg", DOOR_U1 + 0.1, U(435) + 0.2, FAC_V + 0.2, FAC_V + 0.24, 0.3, 2.4, "wall_white", collide=False)
 for i in range(18):
     zz = 0.4 + i * 0.11
     box(f"E_louver_{i}", DOOR_U1 + 0.15, DOOR_U1 + 0.6, FAC_V + 0.24, FAC_V + 0.29, zz, zz + 0.03, "metal", collide=False)
-plane("SIGN_kwangeum", DOOR_U1 + 0.95, FAC_V + 0.2, 1.65, 0.45, 2.25, "S", "sign_kwangeum", offset=0.05, merge=False)
+plane("SIGN_pokeum", DOOR_U1 + 0.95, FAC_V + 0.2, 1.65, 0.45, 2.25, "S", "sign_pokeum", offset=0.05, merge=False)
 # 상영관 전광판 (문 위, 천장에 매달린 가로형 디스플레이) - 클라이언트가 문구를 그림
 SIGN4_W, SIGN4_H = 4.4, 1.25
 box("E_sign4_frame", AUD_U1 + 0.1, AUD_U1 + 0.2 + SIGN4_W + 0.2, FAC_V + 0.5, FAC_V + 0.62, 3.35, 3.35 + SIGN4_H + 0.16, "black_plastic", collide=False)
@@ -536,7 +537,7 @@ for i, vv in enumerate([V(240), V(190), V(140), V(90)]):
         light(f"LIGHT_cor_{i}", U(413), vv + 1.9, COR_H - 0.05, kind="spot", angle=65, intensity=4.5, distance=6.0, color=(1, 0.8, 0.6))
 light("LIGHT_cor_n", (U(330) + AUD_U1) / 2, (V(45) + AUD_V0 - TH) / 2, COR_H - 0.05, kind="spot", angle=65, intensity=4.5, distance=6.0, color=(1, 0.8, 0.6))
 plane("SIGN_exit_cor", (DOOR_U0 + DOOR_U1) / 2, FAC_V - 0.2, 2.75, 0.6, 0.3, "N", "sign_exit_door", offset=0.01, merge=True)
-# 4관 입구 통로 (광음시네마 벽과 베이비시트 사이로 들어가 안쪽 문을 지나 북쪽 끝에서 출구 복도와 합류)
+# 4관 입구 통로 (폭음시네마 벽과 베이비시트 사이로 들어가 안쪽 문을 지나 북쪽 끝에서 출구 복도와 합류)
 IND_V = V(200)
 IND_U0, IND_U1 = IN_U0 + 0.4, IN_U1 - 0.4
 box("IN_wall_l", IN_U0, IND_U0, IND_V - 0.1, IND_V + 0.1, 0, COR_H, "wall_charcoal")
@@ -549,7 +550,7 @@ for i, vv in enumerate([V(245), V(150), V(70)]):
     plane(f"L_in_glow_{i}", IN_U0 + 0.01, vv, 1.9, 0.9, 1.6, "E", "glow_cone", offset=0.0)
     light(f"LIGHT_in_{i}", (IN_U0 + IN_U1) / 2, vv, COR_H - 0.05, kind="spot", angle=65, intensity=4.5, distance=6.0, color=(1, 0.8, 0.6))
 
-# ---------------------------------------------------------------- 4관 내부 (광음시네마)
+# ---------------------------------------------------------------- 4관 내부 (폭음시네마)
 # 바닥: 앞쪽 평지(카펫)
 box("A_floor_front", AUD_U0, AUD_U1, AUD_V0, AUD_V1, -0.2, 0.0, "carpet", floor=True, collide=False)
 box("A_ceiling", AUD_U0 - TH, AUD_U1 + TH, AUD_V0 - TH, AUD_V1 + TH, AUD_H, AUD_H + 0.2, "ceiling_dark", collide=False)
@@ -571,7 +572,7 @@ plane("SCREEN_4", AUD_U1 - 0.62, SCR_CV, SCR_Z0 + SCR_H / 2, SCR_W, SCR_H, "W", 
       props={"display": "screen4", "w": SCR_W, "h": SCR_H})
 # 스크린 앞 무대 단
 box("A_stage", AUD_U1 - 1.6, AUD_U1 - 0.6, AUD_V0 + 0.5, AUD_V1 - 0.5, 0, 0.35, "black_plastic", floor=True)
-# 광음 서브우퍼 큐브 + 보라색 LED 바닥 (사진 참고)
+# 폭음 서브우퍼 큐브 + 보라색 LED 바닥 (사진 참고)
 for i, cv in enumerate([5.9, 9.1, 10.3, 11.5, 12.7, 15.7]):
     cu = AUD_U1 - 2.4 - (0.4 if i in (0, 5) else 0)
     box(f"A_sub_{i}", cu - 0.42, cu + 0.42, cv - 0.42, cv + 0.42, 0.1, 1.0, "black_plastic")
@@ -819,10 +820,10 @@ wall_with_openings("W_6", "v", U(555) + 0.15, V(265), V(395), 0, LOBBY_H, "wall_
 for i, (a, b) in enumerate([(V(268) + 0.2, V(295)), (V(342), V(366))]):
     box(f"D_6_door_{i}", U(555) + 0.25, U(555) + 0.32, a, b, 0, 2.4, "steel_dark")
 plane("SIGN_6", U(555), (V(295) + V(342)) / 2, 3.2, 1.4, 0.7, "W", "sign_6", offset=0.0, merge=True)
-# 광음시네마 벽 블록(출구 문 오른쪽) + 그 오른쪽 4관 입구 통로 위 인방
-KWANG_U1 = IN_U0 + 0.75
-box("W_kwangeum", IN_U0, KWANG_U1, V(262), FAC_V + 0.2, 0, LOBBY_H, "wall_stone")
-box("W_in_lintel", KWANG_U1, BS_U0, V(262), FAC_V + 0.2, COR_H, LOBBY_H, "wall_stone", collide=False)
+# 폭음시네마 벽 블록(출구 문 오른쪽) + 그 오른쪽 4관 입구 통로 위 인방
+POKEUM_U1 = IN_U0 + 0.75
+box("W_pokeum", IN_U0, POKEUM_U1, V(262), FAC_V + 0.2, 0, LOBBY_H, "wall_stone")
+box("W_in_lintel", POKEUM_U1, BS_U0, V(262), FAC_V + 0.2, COR_H, LOBBY_H, "wall_stone", collide=False)
 # 기둥
 box("COL_p1", U(441), U(457), V(328), V(344), 0, LOBBY_H, "wall_stone")
 box("COL_p2", U(291), U(307), V(522), V(538), 0, LOBBY_H, "wall_stone")
@@ -987,7 +988,7 @@ for i, uu in enumerate([U(450), U(560)]):
     light(f"LIGHT_wc_{i}", uu, (WC_V0 + WC_V1) / 2, 2.75, kind="spot", angle=65, intensity=3.0, distance=6.0, color=(0.95, 0.97, 1.0))
 
 # ---------------------------------------------------------------- 엘리베이터 홀 (남동쪽 석재 블록 안 = 10층 로비 입구)
-# 서쪽 승강로에 엘리베이터 2대(동쪽을 봄), 맞은편 동쪽 벽에 LOTTE CINEMA ◁10F|4/5/6관 사인,
+# 서쪽 승강로에 엘리베이터 2대(동쪽을 봄), 맞은편 동쪽 벽에 EOTTE CINEMA ◁10F|4/5/6관 사인,
 # 북쪽 면은 포스터 3칸 폭: 서쪽 2칸은 통째로 광고 포스터 벽, 동쪽 1칸이 로비로 나가는 입구,
 # 남쪽(엘리베이터를 보면 왼쪽)은 통창 + 그 앞에 상영작 브로마이드
 EL_U0, EL_U1, EL_V0, EL_V1 = U(285), U(400), V(690), V(840)
@@ -1027,7 +1028,7 @@ box("EV_call", EH_U0, EH_U0 + 0.03, EH_CV - 0.06, EH_CV + 0.06, 1.0, 1.28, "meta
 box("EV_call_up", EH_U0 + 0.03, EH_U0 + 0.035, EH_CV - 0.03, EH_CV + 0.03, 1.17, 1.22, "emit_white", collide=False)
 box("EV_call_dn", EH_U0 + 0.03, EH_U0 + 0.035, EH_CV - 0.03, EH_CV + 0.03, 1.06, 1.11, "emit_white", collide=False)
 # 엘리베이터에서 내리면 바로 보이는 맞은편 사인 (◁ = 왼쪽(북쪽) 로비 입구)
-plane("SIGN_lotte_el", EH_U1, EH_CV, 2.05, 4.8, 1.2, "W", "sign_lotte", offset=0.03, merge=False)
+plane("SIGN_eotte_el", EH_U1, EH_CV, 2.05, 4.8, 1.2, "W", "sign_eotte", offset=0.03, merge=False)
 # 통창 앞 상영작 브로마이드 (입간판, 홀 안쪽을 봄)
 BR_CU, BR_V = (EH_U0 + EH_U1) / 2, EL_V1 - 1.1
 box("EH_bromide_base", BR_CU - 0.7, BR_CU + 0.7, BR_V - 0.13, BR_V + 0.17, 0, 0.08, "black_plastic")

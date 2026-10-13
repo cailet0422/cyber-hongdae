@@ -18,6 +18,7 @@ export class World {
     this.seats = [];
     this.seatById = new Map();
     this.displays = {};
+    this.posterMats = []; // 포스터 아틀라스 머티리얼 (서버 포스터 설정으로 텍스처를 교체)
     this.lightDefs = [];
     this.zones = {};
     this.spawn = new THREE.Vector3(18.65, 0, 54.23);   // 맵의 SPAWN이 없을 때: 엘리베이터 앞 (동쪽 사인을 바라봄)
@@ -89,6 +90,7 @@ export class World {
         if (/glow_cone|graffiti/.test(mat.name) && mat.transparent) { mat.blending = THREE.AdditiveBlending; mat.depthWrite = false; }
         if (mat.name === 'glass') { mat.opacity = 0.12; mat.transparent = true; mat.depthWrite = false; }
         if (mat.name === 'invisible') m.visible = false;
+        if (mat.name === 'posters' && !this.posterMats.includes(mat)) this.posterMats.push(mat);
       }
       m.matrixAutoUpdate = false;
     }

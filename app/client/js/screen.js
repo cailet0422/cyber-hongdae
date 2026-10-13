@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 
 const SCREEN_IDLE_BG = '#07070b';
+const DEFAULT_POSTERS = Array.from({ length: 8 }, (_, i) => `/assets/posters/poster_${i + 1}.jpg`);
 
 // 디스플레이 메시 위에 덮는 평면 (법선 방향 기준)
 function overlayPlane(display, w, h, mat, lift = 0.012) {
@@ -27,8 +28,12 @@ function canvasTex(w, h) {
   return { c, g: c.getContext('2d'), t };
 }
 
-function loadImg(src) {
-  return new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
+function loadImg(src, timeout = 0) {
+  return new Promise((res) => {
+    const i = new Image();
+    i.onload = () => res(i); i.onerror = () => res(null); i.src = src;
+    if (timeout) setTimeout(() => res(null), timeout);
+  });
 }
 
 let HlsMod = null;
@@ -146,10 +151,10 @@ export class Cinema {
     g.textBaseline = 'middle';
     g.fillStyle = '#e3192a';
     g.font = 'bold 64px Arial, sans-serif';
-    g.fillText('LOTTE CINEMA', W / 2, H * 0.32);
+    g.fillText('EOTTE CINEMA', W / 2, H * 0.32);
     g.fillStyle = '#fff';
     g.font = 'bold 84px "Malgun Gothic", sans-serif';
-    g.fillText('광음시네마', W / 2, H * 0.5);
+    g.fillText('폭음시네마', W / 2, H * 0.5);
     const s = this.snap;
     let msg = '상영을 기다리고 있습니다';
     if (s?.prepare) {
@@ -376,6 +381,8 @@ export class Cinema {
     const prevBg = this.cfg?.sign4?.bgUrl;
     this.cfg = cfg;
     if (cfg.lobby?.item?.url !== prevLobby) this._loadLobbyItem(cfg.lobby?.item);
+    const posters = cfg.posters?.length ? cfg.posters : DEFAULT_POSTERS;
+    if (posters.join('|') !== this._posterKey) this._loadPosters(posters);
     if (cfg.sign4?.bgUrl !== prevBg || !this.signBg) {
       loadImg(cfg.sign4?.bgUrl || '/assets/textures/sign4_bg.jpg').then((img) => { this.signBg = img; this._signT = 0; });
     }
@@ -418,7 +425,7 @@ export class Cinema {
     }
     g.font = 'bold 26px Arial, sans-serif';
     g.textAlign = 'right';
-    g.fillText('LOTTE CINEMA', W - 26, 52);
+    g.fillText('EOTTE CINEMA', W - 26, 52);
     // 메인 줄: 관 / 층 / 제목
     const head = `${s.hall || '4관'}`;
     const floor = s.floor || '';
@@ -469,8 +476,48 @@ export class Cinema {
     this.lobbyVtex.colorSpace = THREE.SRGBColorSpace;
     this.lobbyVideo.addEventListener('playing', () => { if (this.lobbyItem) { this.lobbyMat.map = this.lobbyVtex; this.lobbyMat.needsUpdate = true; } });
     this.posters = [];
-    for (let i = 1; i <= 8; i++) loadImg(`/assets/textures/poster_${i}.jpg`).then((im) => im && this.posters.push(im));
     loadImg('/assets/textures/led_idle2.jpg').then((im) => (this.lobbyBg = im));
+  }
+
+  // ---------------------------------------------------------------- 포스터
+  // 서버가 정한 8칸의 포스터로 맵 포스터 아틀라스(4x2)를 다시 그리고, 로비 전광판 슬라이드도 같은 포스터로 바꾼다
+  async _loadPosters(urls) {
+    const key = (this._posterKey = urls.join('|'));
+    // 한 장이 멈춰도 나머지가 적용되도록 제한 시간을 두고, 실패한 칸은 기본 포스터로
+    const imgs = await Promise.all(urls.map((u, i) => loadImg(u, 15000).then((im) => im || (u !== DEFAULT_POSTERS[i] ? loadImg(DEFAULT_POSTERS[i], 15000) : null))));
+    if (key !== this._posterKey) return;
+    this.posters = [...new Map(urls.map((u, i) => [u, imgs[i]])).values()].filter(Boolean);
+    this._lobbyT = 0;
+    this._drawPosterAtlas(imgs);
+  }
+
+  _drawPosterAtlas(imgs) {
+    const mats = this.world.posterMats;
+    if (!mats.length) return;
+    if (!this.posterAtlas) {
+      this.posterAtlas = canvasTex(2048, 1536);       // 맵(GLB)에 구운 아틀라스와 같은 배치: 4열 x 2행, 위쪽 행이 1~4번
+      this.posterAtlas.t.flipY = false;               // glTF UV 기준
+      this.posterAtlas.t.anisotropy = Math.min(8, this.world.renderer.capabilities.getMaxAnisotropy());
+    }
+    const { c, g, t } = this.posterAtlas;
+    const SW = c.width / 4, SH = c.height / 2;
+    g.fillStyle = '#111';
+    g.fillRect(0, 0, c.width, c.height);
+    imgs.forEach((im, i) => {
+      if (!im) return;
+      // 라이트박스 실제 비율(7:10)로 가운데를 잘라 칸에 채운다 (칸 픽셀 비율이 달라도 UV가 실제 비율로 되돌림)
+      const a = 0.7;
+      let sw = im.width, sh = im.height;
+      if (sw / sh > a) sw = sh * a; else sh = sw / a;
+      g.drawImage(im, (im.width - sw) / 2, (im.height - sh) / 2, sw, sh, (i % 4) * SW, Math.floor(i / 4) * SH, SW, SH);
+    });
+    t.needsUpdate = true;
+    for (const m of mats) {
+      for (const k of ['map', 'emissiveMap']) {
+        if (m[k] && m[k] !== t) { m[k].dispose(); m[k] = t; }
+      }
+      m.needsUpdate = true;
+    }
   }
 
   async _loadLobbyItem(item) {
@@ -536,14 +583,14 @@ export class Cinema {
     g.textAlign = 'left';
     g.fillStyle = '#e3192a';
     g.font = 'bold 44px Arial, sans-serif';
-    g.fillText('LOTTE CINEMA', x, H * 0.22);
+    g.fillText('EOTTE CINEMA', x, H * 0.22);
     g.fillStyle = '#fff';
     g.font = 'bold 54px "Malgun Gothic", sans-serif';
     g.fillText('사이버 홍대입구', x, H * 0.36);
     const s = this.snap;
     g.font = '34px "Malgun Gothic", sans-serif';
     g.fillStyle = '#d8ccff';
-    g.fillText(s?.status === 'playing' ? 'NOW PLAYING · 4관 광음시네마' : '4관 광음시네마', x, H * 0.52);
+    g.fillText(s?.status === 'playing' ? 'NOW PLAYING · 4관 폭음시네마' : '4관 폭음시네마', x, H * 0.52);
     g.fillStyle = '#fff';
     g.font = 'bold 42px "Malgun Gothic", sans-serif';
     const title = (s?.title || '상영 대기 중');

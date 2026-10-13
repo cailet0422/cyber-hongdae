@@ -7,7 +7,8 @@ const { EventEmitter } = require('events');
 const { Readable } = require('stream');
 const express = require('express');
 const { WebSocketServer } = require('ws');
-const { MediaManager, UA } = require('./media');
+const { MediaManager, UA, IMAGE_EXT } = require('./media');
+const { TOOLS, run } = require('./tools');
 const { Playback } = require('./playback');
 const { QuickTunnel, TailscaleFunnel, Upnp, lanAddresses } = require('./tunnel');
 
@@ -15,6 +16,8 @@ const APP_DIR = path.resolve(__dirname, '..');
 const CLIENT_DIR = path.join(APP_DIR, 'client');
 const NM = path.join(APP_DIR, 'node_modules');
 const VERSION = require('../package.json').version;
+const POSTER_SLOTS = 8;   // 맵 포스터 아틀라스 칸 수 (4x2)
+const POSTER_FILE = /^[0-9a-f]{24}\.(jpg|jpeg|png|gif|webp|bmp)$/;
 
 const CHARACTERS = [
   { id: 'yui', name: '유이', color: '#ff4848' },
@@ -40,6 +43,7 @@ const DEFAULT_CONFIG = {
     messageEn: 'Please enter the Screen 4', showClock: true, bg: 'default', color: '#ffffff',
   },
   lobby: { itemId: null, volume: 0.25, startedAt: Date.now() },
+  posters: Array(POSTER_SLOTS).fill(null), // 칸마다 null(기본 포스터) 또는 { file, name } (데이터 폴더 posters/ 에 저장)
   stickColors: [
     { id: 'yui', name: '유이', color: '#ff2a2a' },
     { id: 'mio', name: '미오', color: '#2f6bff' },
@@ -68,6 +72,10 @@ class CinemaServer extends EventEmitter {
     this.bans = readJson(path.join(dataDir, 'bans.json'), []);
     this.avatarDir = path.join(dataDir, 'avatars');
     fs.mkdirSync(this.avatarDir, { recursive: true });
+    this.posterDir = path.join(dataDir, 'posters');
+    fs.mkdirSync(this.posterDir, { recursive: true });
+    const ps = Array.isArray(this.config.posters) ? this.config.posters : [];
+    this.config.posters = Array.from({ length: POSTER_SLOTS }, (_, i) => (ps[i] && POSTER_FILE.test(ps[i].file) ? { file: ps[i].file, name: String(ps[i].name || '') } : null));
     this.media = new MediaManager({ dataDir, cacheDir, settings: this.config.media, log: (m) => this.log(m) });
     this.playback = new Playback(this.media);
     this.users = new Map();
@@ -100,7 +108,7 @@ class CinemaServer extends EventEmitter {
   }
   publicConfig() {
     const c = this.config;
-    return { serverName: c.serverName, sign4: this.sign4State(), lobby: this.lobbyState(), stickColors: c.stickColors, characters: CHARACTERS, chat: { enabled: c.chat.enabled, slowMode: c.chat.slowMode, maxLen: c.chat.maxLen }, customModels: c.customModels };
+    return { serverName: c.serverName, sign4: this.sign4State(), lobby: this.lobbyState(), posters: this.posterUrls(), stickColors: c.stickColors, characters: CHARACTERS, chat: { enabled: c.chat.enabled, slowMode: c.chat.slowMode, maxLen: c.chat.maxLen }, customModels: c.customModels };
   }
   sign4State() {
     const s = this.config.sign4;
@@ -111,6 +119,68 @@ class CinemaServer extends EventEmitter {
     const st = this.sign4State();
     const key = st.title + '|' + st.nowPlaying;
     if (key !== this._lastSignKey) { this._lastSignKey = key; this.broadcast({ t: 'cfg', d: this.publicConfig() }); }
+  }
+
+  // ---------------------------------------------------------------- 포스터 (맵 곳곳의 라이트박스 8칸 + 로비 전광판 슬라이드)
+  _posterOk(p) { return p && fs.existsSync(path.join(this.posterDir, p.file)); }
+  posterUrls() {
+    return this.config.posters.map((p, i) => (this._posterOk(p) ? '/posters/' + p.file : `/assets/posters/poster_${i + 1}.jpg`));
+  }
+  posterState() {
+    return this.config.posters.map((p, i) => {
+      const ok = this._posterOk(p);
+      return { slot: i, custom: !!ok, name: ok ? p.name : null, file: ok ? p.file : null, path: ok ? path.join(this.posterDir, p.file) : null, def: `poster_${i + 1}.jpg` };
+    });
+  }
+  _slot(slot) {
+    const i = Number(slot);
+    if (!Number.isInteger(i) || i < 0 || i >= POSTER_SLOTS) throw new Error('잘못된 포스터 칸입니다');
+    return i;
+  }
+  // 이미지 파일을 데이터 폴더에 복사해 해당 칸에 건다. 접속자 모두가 받으므로 ffmpeg로 줄여 JPEG로 저장 (실패하면 원본 그대로)
+  async setPoster(slot, src) {
+    const i = this._slot(slot);
+    src = String(src || '').trim().replace(/^"(.*)"$/, '$1');
+    const ext = path.extname(src).slice(1).toLowerCase();
+    if (!IMAGE_EXT.includes(ext)) throw new Error(`이미지 파일(${IMAGE_EXT.join(', ')})만 쓸 수 있습니다`);
+    if (!fs.existsSync(src) || !fs.statSync(src).isFile()) throw new Error('파일을 찾을 수 없습니다: ' + src);
+    if (fs.statSync(src).size > 50 * 1048576) throw new Error('이미지가 너무 큽니다 (최대 50MB)');
+    const buf = fs.readFileSync(src);
+    const id = crypto.createHash('sha256').update(buf).digest('hex').slice(0, 24);
+    let file = id + '.jpg';
+    if (!fs.existsSync(path.join(this.posterDir, file))) {
+      const tmp = path.join(this.posterDir, id + '.tmp.jpg');
+      const r = await run(TOOLS.ffmpeg, ['-y', '-v', 'error', '-i', src, '-frames:v', '1', '-vf', "scale=w='min(1000,iw)':h='min(1430,ih)':force_original_aspect_ratio=decrease", '-q:v', '3', tmp], { timeout: 30000 });
+      if (r.code === 0 && fs.existsSync(tmp) && fs.statSync(tmp).size > 0) fs.renameSync(tmp, path.join(this.posterDir, file));
+      else {
+        fs.rmSync(tmp, { force: true });
+        if (buf.length > 15 * 1048576) throw new Error('이미지를 변환하지 못했습니다. 15MB 이하의 jpg/png로 다시 시도하세요');
+        file = id + '.' + (ext === 'jpeg' ? 'jpg' : ext);
+        fs.writeFileSync(path.join(this.posterDir, file), buf);
+      }
+    }
+    this.config.posters[i] = { file, name: path.basename(src) };
+    this.log(`포스터 ${i + 1} 변경: ${path.basename(src)}`);
+    this._postersChanged();
+    return this.posterState();
+  }
+  resetPoster(slot) {
+    this.config.posters[this._slot(slot)] = null;
+    this._postersChanged();
+    return this.posterState();
+  }
+  resetPosters() {
+    this.config.posters = Array(POSTER_SLOTS).fill(null);
+    this._postersChanged();
+    return this.posterState();
+  }
+  _postersChanged() {
+    this.saveConfig();
+    this.broadcast({ t: 'cfg', d: this.publicConfig() });
+    this.emit('posters', this.posterState());
+    // 어느 칸에도 쓰이지 않는 파일 정리
+    const keep = new Set(this.config.posters.filter(Boolean).map((p) => p.file));
+    try { for (const f of fs.readdirSync(this.posterDir)) if (!keep.has(f)) fs.rmSync(path.join(this.posterDir, f), { force: true }); } catch {}
   }
 
   // ---------------------------------------------------------------- 로비 전광판
@@ -199,6 +269,11 @@ class CinemaServer extends EventEmitter {
       const p = this.media.subPath(req.params.sid);
       if (!p || !fs.existsSync(p)) return res.status(404).end();
       res.type('json').sendFile(p);
+    });
+    app.get('/posters/:file', (req, res) => {
+      const f = String(req.params.file);
+      if (!POSTER_FILE.test(f) || !fs.existsSync(path.join(this.posterDir, f))) return res.status(404).end();
+      res.sendFile(path.join(this.posterDir, f), { headers: { 'Cache-Control': 'public, max-age=604800, immutable' } });
     });
     app.get('/custom/sign4bg', (req, res) => {
       const b = this.config.sign4.bg;

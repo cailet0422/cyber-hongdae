@@ -12,6 +12,7 @@ function makeAdminApi(server, extra = {}) {
       users: server.userList(),
       chat: server.chatLog.slice(-200),
       bans: server.bans,
+      posters: server.posterState(),
       logs: server.logs.slice(-200),
       dataDir: server.dataDir,
     }),
@@ -45,6 +46,10 @@ function makeAdminApi(server, extra = {}) {
     // 전광판 / 설정
     setLobby: (id) => server.setLobbyItem(id),
     setConfig: (patch) => server.setConfig(patch),
+    // 포스터
+    setPoster: (slot, file) => server.setPoster(slot, file),
+    resetPoster: (slot) => server.resetPoster(slot),
+    resetPosters: () => server.resetPosters(),
     // 접속자 / 채팅
     kick: (id, r) => server.kick(id, r),
     ban: (id, r) => server.ban(id, r),
@@ -57,6 +62,6 @@ function makeAdminApi(server, extra = {}) {
   };
 }
 
-const ADMIN_EVENTS = ['status', 'log', 'users', 'chat', 'chatclear', 'playback', 'media', 'item', 'config', 'bans'];
+const ADMIN_EVENTS = ['status', 'log', 'users', 'chat', 'chatclear', 'playback', 'media', 'item', 'config', 'bans', 'posters'];
 
 module.exports = { makeAdminApi, ADMIN_EVENTS };

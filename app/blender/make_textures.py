@@ -83,7 +83,7 @@ def dark_tile():
 
 
 def carpet():
-    # 롯데시네마 남색 카펫 + 금색 소용돌이 (텍스처 1장 = 2m)
+    # 어데시네마 남색 카펫 + 금색 소용돌이 (텍스처 1장 = 2m)
     S = 1024
     img = noise_img(S, (24, 30, 62), 9, 0.8, 2)
     d = ImageDraw.Draw(img)
@@ -141,7 +141,7 @@ def stone_panel():
 
 
 def theater_wall():
-    # 광음시네마 측벽 - 어두운 거친 석재 블록 (흡음벽 느낌) 1장 = 2m
+    # 폭음시네마 측벽 - 어두운 거친 석재 블록 (흡음벽 느낌) 1장 = 2m
     S = 1024
     img = Image.new("RGB", (S, S), (34, 32, 31))
     d = ImageDraw.Draw(img)
@@ -180,11 +180,11 @@ def graffiti():
         else:
             d.line([x, y, x + rr.randint(-400, 400), y + rr.randint(-120, 120)], fill=c, width=rr.randint(8, 22))
     f = font("ariblk.ttf", 300)
-    txt = "KWANG-EUM"
+    txt = "POK-EUM"
     for dx, dy, col in ((14, 14, (20, 20, 20, 255)), (0, 0, (250, 214, 40, 255))):
         d.text((150 + dx, 300 + dy), txt, font=f, fill=col, stroke_width=14, stroke_fill=(30, 60, 160, 255))
     f2 = font("malgunbd.ttf", 160)
-    d.text((1450, 90), "광음", font=f2, fill=(255, 255, 255, 230), stroke_width=8, stroke_fill=(255, 90, 160, 255))
+    d.text((1450, 90), "폭음", font=f2, fill=(255, 255, 255, 230), stroke_width=8, stroke_fill=(255, 90, 160, 255))
     img = img.filter(ImageFilter.GaussianBlur(1.2))
     save(img, "graffiti.png")
 
@@ -200,13 +200,13 @@ def seat_fabric():
 
 
 def seat_logo():
-    # 헤드레스트 LOTTE 자수
+    # 헤드레스트 EOTTE 자수
     W, H = 512, 256
     img = noise_img(W, (40, 76, 156), 10, 0.6, 32).crop((0, 0, W, H))
     d = ImageDraw.Draw(img)
     f = font("seguibl.ttf", 70)
-    tw = d.textlength("LOTTE", font=f)
-    d.text(((W - tw) / 2, 80), "LOTTE", font=f, fill=(170, 180, 200))
+    tw = d.textlength("EOTTE", font=f)
+    d.text(((W - tw) / 2, 80), "EOTTE", font=f, fill=(170, 180, 200))
     save(img, "seat_logo.jpg")
 
 
@@ -261,14 +261,14 @@ def menu_boards():
     save(img, "menu_boards.jpg")
 
 
-def lotte_sign():
-    # LOTTE CINEMA ◁ 10F | 4/5/6관 - 화살표 방향별 두 장 (sign_lotte: 왼쪽, sign_lotte_r: 오른쪽)
-    for name, right in (("sign_lotte.png", False), ("sign_lotte_r.png", True)):
+def eotte_sign():
+    # EOTTE CINEMA ◁ 10F | 4/5/6관 - 화살표 방향별 두 장 (sign_eotte: 왼쪽, sign_eotte_r: 오른쪽)
+    for name, right in (("sign_eotte.png", False), ("sign_eotte_r.png", True)):
         W, H = 2048, 512
         img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
         f = font("arialbd.ttf", 200)
-        d.text((40, 30), "LOTTE CINEMA", font=f, fill=(225, 25, 35, 255))
+        d.text((40, 30), "EOTTE CINEMA", font=f, fill=(225, 25, 35, 255))
         f2 = font("malgunbd.ttf", 120)
         d.ellipse([60, 300, 170, 410], outline=(240, 240, 240, 255), width=10)
         tri = [(145, 355), (105, 325), (105, 385)] if right else [(95, 355), (135, 325), (135, 385)]
@@ -382,9 +382,9 @@ def ad_screens():
     W, H = 1536, 288
     img = Image.new("RGB", (W, H), (0, 0, 0))
     d = ImageDraw.Draw(img)
-    panels = [((250, 250, 252), (30, 70, 160), "LOTTE CINEMA", "MEMBERSHIP"),
+    panels = [((250, 250, 252), (30, 70, 160), "EOTTE CINEMA", "MEMBERSHIP"),
               ((180, 225, 245), (20, 60, 110), "SPECIAL", "SCREENING"),
-              ((40, 20, 70), (255, 200, 90), "광음시네마", "4관 사운드 체험")]
+              ((40, 20, 70), (255, 200, 90), "폭음시네마", "4관 사운드 체험")]
     for i, (bg, fg, t1, t2) in enumerate(panels):
         x = i * 512
         d.rectangle([x + 4, 4, x + 507, H - 4], fill=bg)
@@ -463,35 +463,6 @@ def kiosk_screens():
     save(img, "kiosk_screens.jpg")
 
 
-def posters():
-    # 오리지널 가상 영화 포스터 6장 (1장 512x768) → 아틀라스 3x2
-    titles = [
-        ("방과후 티타임", "LIVE IN HONGDAE", (255, 140, 180), (40, 20, 60)),
-        ("푸른 밤의 베이스", "BLUE NIGHT BASS", (90, 150, 255), (10, 20, 50)),
-        ("드럼 앤 선샤인", "DRUM & SUNSHINE", (255, 210, 60), (70, 30, 10)),
-        ("홍차와 건반", "TEA & KEYS", (200, 160, 255), (30, 20, 50)),
-        ("고양이 귀 기타", "NEKO GUITAR", (255, 90, 90), (40, 10, 20)),
-        ("광음 페스티벌", "SOUND FESTIVAL", (120, 240, 200), (5, 30, 30)),
-    ]
-    W, H = 512, 768
-    atlas = Image.new("RGB", (W * 3, H * 2))
-    for i, (kt, et, c1, c2) in enumerate(titles):
-        img = Image.new("RGB", (W, H), c2)
-        d = ImageDraw.Draw(img)
-        for y in range(H):
-            t = y / H
-            d.line([0, y, W, y], fill=tuple(int(c2[k] * (1 - t) + c1[k] * t * 0.55) for k in range(3)))
-        rr = random.Random(100 + i)
-        for _ in range(16):
-            x, y, r = rr.randint(0, W), rr.randint(60, 520), rr.randint(20, 120)
-            d.ellipse([x - r, y - r, x + r, y + r], outline=c1, width=rr.randint(2, 8))
-        d.text((30, 560), kt, font=font("malgunbd.ttf", 62), fill=(255, 255, 255))
-        d.text((32, 650), et, font=font("arialbd.ttf", 34), fill=c1)
-        d.text((32, 712), "COMING SOON  |  LOTTE CINEMA", font=font("arialbd.ttf", 20), fill=(220, 220, 220))
-        atlas.paste(img, ((i % 3) * W, (i // 3) * H))
-    save(atlas, "posters.jpg")
-
-
 def city_night():
     # 창밖 홍대 야경 (원경)
     W, H = 2048, 1024
@@ -531,7 +502,7 @@ def theater_number():
     text_sign("sign_6.png", "6관", (255, 255, 255, 255), None, 512, 256, size=170)
     text_sign("sign_wc.png", "화장실  RESTROOM", (255, 255, 255, 255), None, 1024, 160, size=80)
     text_sign("sign_hydrant.png", "소화전", (255, 255, 255), (200, 20, 20), 512, 256, size=120)
-    vertical_text("sign_kwangeum.png", "광음시네마", (25, 25, 25, 255))
+    vertical_text("sign_pokeum.png", "폭음시네마", (25, 25, 25, 255))
 
 
 def glow_cone():
@@ -556,6 +527,6 @@ if __name__ == "__main__":
     wood_tile(); dark_tile(); carpet(); carpet_dark()
     stone_panel(); theater_wall(); graffiti()
     seat_fabric(); seat_logo(); wood()
-    sweet_sign(); menu_boards(); lotte_sign(); exit_sign(); kiosk_screens(); posters(); city_night()
+    sweet_sign(); menu_boards(); eotte_sign(); exit_sign(); kiosk_screens(); city_night()
     baby_seat_sign(); theater_number(); down_sign()
     kiosk_atlas(); box_office_signs(); ad_screens()

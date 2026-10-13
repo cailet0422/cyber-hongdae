@@ -30,7 +30,7 @@ const BASE = (process.argv[2] || 'http://127.0.0.1:7777').replace(/\/$/, '');
     }
   }
   // 정적 에셋
-  for (const p of ['/css/style.css', '/assets/map/cinema.glb', '/assets/blade/sheet.png', '/assets/textures/sign4_bg.jpg', '/assets/textures/led_idle2.jpg', '/vendor/hls/hls.mjs', '/api/info']) {
+  for (const p of ['/css/style.css', '/assets/map/cinema.glb', '/assets/blade/sheet.png', '/assets/textures/sign4_bg.jpg', '/assets/textures/led_idle2.jpg', '/assets/posters/poster_1.jpg', '/vendor/hls/hls.mjs', '/api/info']) {
     const r = await fetch(BASE + p);
     if (!r.ok) failed.push(`${r.status} ${BASE + p}`);
   }

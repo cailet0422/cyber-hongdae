@@ -1,5 +1,5 @@
 # Codex(gpt-6.1-sol)로 생성한 이미지를 게임용 텍스처로 합성
-#   textures_ai/*.png → textures_ai/{posters_ai.jpg, menu_boards_ai.png, wall_stone_ai.jpg, ...}
+#   textures_ai/*.png → textures_ai/{menu_boards_ai.png, wall_stone_ai.jpg, ...}
 #                     → ../client/assets/textures/{sign4_bg.jpg, led_idle.jpg, led_idle2.jpg}
 import os
 
@@ -30,26 +30,6 @@ def fit(im, w, h):
 
 def shadow_text(d, xy, text, f, fill, sw=4):
     d.text(xy, text, font=f, fill=fill, stroke_width=sw, stroke_fill=(0, 0, 0))
-
-
-POSTER_DIR = os.path.normpath(os.path.join(HERE, "..", "..", "poster"))
-
-
-def posters():
-    """D:/cyberhongip/poster 의 실제 포스터를 4x2 아틀라스(슬롯 512x768)로 묶는다. 부족하면 AI 포스터로 채움."""
-    files = []
-    if os.path.isdir(POSTER_DIR):
-        files = [os.path.join(POSTER_DIR, f) for f in sorted(os.listdir(POSTER_DIR)) if f.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))]
-    files += [os.path.join(AI, f"poster_{i}.png") for i in range(1, 7)]
-    W, H = 512, 768
-    atlas = Image.new("RGB", (W * 4, H * 2))
-    for i in range(8):
-        im = Image.open(files[i % len(files)]).convert("RGB")
-        atlas.paste(fit(im, W, H), ((i % 4) * W, (i // 4) * H))
-    atlas.save(os.path.join(AI, "posters_ai.jpg"), quality=90)
-    # 클라이언트용 개별 포스터 (로비 전광판 슬라이드 등)
-    for i, f in enumerate(files[:8]):
-        fit(Image.open(f).convert("RGB"), 700, 1000).save(os.path.join(CLIENT_TEX, f"poster_{i + 1}.jpg"), quality=86)
 
 
 def menu_boards():
@@ -113,5 +93,5 @@ def client_textures():
 
 
 if __name__ == "__main__":
-    posters(); menu_boards(); wall_stone(); resize_tiles(); client_textures()
+    menu_boards(); wall_stone(); resize_tiles(); client_textures()
     print("composed")

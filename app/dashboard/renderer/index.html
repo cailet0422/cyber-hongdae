@@ -8,13 +8,14 @@
 </head>
 <body>
   <aside id="side">
-    <div class="logo"><b>LOTTE CINEMA</b><span>사이버 홍대입구 관리자</span></div>
+    <div class="logo"><b>EOTTE CINEMA</b><span>사이버 홍대입구 관리자</span></div>
     <nav>
       <button data-tab="home" class="sel">🏠<span>서버</span></button>
       <button data-tab="media">🎬<span>상영 관리</span></button>
       <button data-tab="users">👥<span>접속자 <em id="userBadge">0</em></span></button>
       <button data-tab="chat">💬<span>채팅</span></button>
       <button data-tab="board">📺<span>전광판</span></button>
+      <button data-tab="posters">🖼️<span>포스터</span></button>
       <button data-tab="settings">⚙️<span>설정</span></button>
     </nav>
     <div class="side-status">
@@ -111,7 +112,7 @@
 
     <!-- ================= 상영 관리 ================= -->
     <section id="tab-media" class="tab hidden">
-      <h1>상영 관리 <small>4관 광음시네마</small></h1>
+      <h1>상영 관리 <small>4관 폭음시네마</small></h1>
       <div class="card player">
         <div class="np">
           <div class="np-title" id="npTitle">상영 중인 영상 없음</div>
@@ -238,6 +239,21 @@
           <button class="btn" id="lDefault">기본 화면(포스터 슬라이드) 사용</button>
           <div class="field grow"><label>로비 전광판 소리 크기 <span id="lVolVal"></span></label><input type="range" id="lVol" min="0" max="1" step="0.05"></div>
         </div>
+      </div>
+    </section>
+
+    <!-- ================= 포스터 ================= -->
+    <section id="tab-posters" class="tab hidden">
+      <h1>포스터</h1>
+      <div class="card">
+        <div class="row between">
+          <h2>맵 포스터 8장</h2>
+          <button class="btn small" id="pResetAll">모두 기본 포스터로</button>
+        </div>
+        <p class="muted small">로비·복도·매표소·엘리베이터 홀의 포스터 라이트박스와 로비 전광판 기본 화면(포스터 슬라이드)에 쓰입니다.
+          <b>바꾸기</b>를 누르거나 이미지 파일을 칸 위로 끌어다 놓으면 접속 중인 사람들 화면에도 바로 바뀝니다.<br>
+          세로 7:10 비율(예: 700×1000)이 가장 잘 맞고, 비율이 다르면 가운데를 기준으로 잘립니다.</p>
+        <div id="posterGrid" class="poster-grid"></div>
       </div>
     </section>
 

@@ -299,7 +299,7 @@ function drawSignPreview() {
   g.fillStyle = 'rgba(0,30,60,0.25)'; g.fillRect(0, 0, W, H);
   g.shadowColor = 'rgba(0,0,0,.7)'; g.shadowBlur = 10; g.fillStyle = s.color;
   if (s.showClock) { const n = new Date(), h = n.getHours(); g.font = 'bold 44px Arial'; g.textAlign = 'left'; g.fillText(`${String(h % 12 || 12).padStart(2, '0')} ${String(n.getMinutes()).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`, 26, 60); }
-  g.font = 'bold 26px Arial'; g.textAlign = 'right'; g.fillText('LOTTE CINEMA', W - 26, 52);
+  g.font = 'bold 26px Arial'; g.textAlign = 'right'; g.fillText('EOTTE CINEMA', W - 26, 52);
   g.textAlign = 'left'; g.font = 'bold 70px "Malgun Gothic"'; g.fillText(s.hall, 26, 200);
   const hw = g.measureText(s.hall).width;
   g.font = 'bold 92px "Malgun Gothic"'; g.fillText(s.floor, 56 + hw, 200);
@@ -352,6 +352,49 @@ $('lAddUrl').onclick = async () => {
 $('lDefault').onclick = () => call('setLobby', null);
 $('lVol').oninput = () => { $('lVolVal').textContent = Math.round($('lVol').value * 100) + '%'; };
 $('lVol').onchange = () => call('setConfig', { lobby: { volume: +$('lVol').value } });
+
+// ------------------------------------------------------------------ 포스터
+const fileUrl = (p) => 'file:///' + encodeURI(p.replace(/\\/g, '/'));
+function renderPosters() {
+  $('posterGrid').innerHTML = (S.posters || []).map((p) => `<div class="poster-slot" data-slot="${p.slot}">
+    <div class="poster-img"><img src="${esc(p.custom ? fileUrl(p.path) : '../../client/assets/posters/' + p.def)}" data-file="${esc(p.file || '')}" alt="">
+      <span class="poster-badge ${p.custom ? 'custom' : ''}">${p.custom ? '직접 올림' : '기본'}</span></div>
+    <div class="poster-meta"><b>포스터 ${p.slot + 1}</b><small title="${esc(p.name || '')}">${esc(p.custom ? p.name : '기본 포스터')}</small></div>
+    <div class="row gap"><button class="btn small primary" data-act="pick">바꾸기</button><button class="btn small" data-act="reset" ${p.custom ? '' : 'disabled'}>기본으로</button></div>
+  </div>`).join('');
+  // 웹 대시보드에서는 file:// 이미지를 못 읽으므로 서버 주소로 다시 시도
+  $('posterGrid').querySelectorAll('img[data-file]').forEach((im) => { if (im.dataset.file) im.onerror = () => { im.onerror = null; im.src = '/posters/' + im.dataset.file; }; });
+}
+async function setPoster(slot, file) {
+  const el = document.querySelector(`.poster-slot[data-slot="${slot}"]`);
+  el?.classList.add('busy');
+  try { S.posters = await call('setPoster', slot, file); renderPosters(); toast(`✅ 포스터 ${slot + 1}을(를) 바꿨습니다`); }
+  finally { el?.classList.remove('busy'); }
+}
+$('posterGrid').addEventListener('click', async (e) => {
+  const b = e.target.closest('button[data-act]');
+  if (!b) return;
+  const slot = +b.closest('.poster-slot').dataset.slot;
+  if (b.dataset.act === 'pick') { const f = await call('pickFiles', 'image'); if (f[0]) await setPoster(slot, f[0]); }
+  if (b.dataset.act === 'reset') { S.posters = await call('resetPoster', slot); renderPosters(); }
+});
+// 칸 위로 끌어다 놓기 (재생목록 추가용 전체 드롭 처리보다 먼저 가로챔)
+$('posterGrid').addEventListener('dragover', (e) => {
+  e.preventDefault(); e.stopPropagation();
+  document.querySelectorAll('.poster-slot').forEach((x) => x.classList.toggle('drag', x === e.target.closest('.poster-slot')));
+});
+$('posterGrid').addEventListener('dragleave', (e) => { if (!e.relatedTarget || !$('posterGrid').contains(e.relatedTarget)) document.querySelectorAll('.poster-slot.drag').forEach((x) => x.classList.remove('drag')); });
+$('posterGrid').addEventListener('drop', async (e) => {
+  e.preventDefault(); e.stopPropagation();
+  document.querySelectorAll('.poster-slot.drag').forEach((x) => x.classList.remove('drag'));
+  const el = e.target.closest('.poster-slot');
+  const f = e.dataTransfer.files[0];
+  if (!el || !f) return;
+  const p = bridge.pathOf(f);
+  if (!p) return toast('여기서는 끌어다 놓기를 쓸 수 없습니다. "바꾸기"를 눌러 주세요');
+  await setPoster(+el.dataset.slot, p);
+});
+$('pResetAll').onclick = async () => { if (confirm('포스터 8장을 모두 기본 포스터로 되돌릴까요?')) { S.posters = await call('resetPosters'); renderPosters(); } };
 
 // ------------------------------------------------------------------ 설정
 function renderSettings() {
@@ -453,7 +496,7 @@ call('updateState').then(renderUpdate).catch(() => {});
 // ------------------------------------------------------------------ 이벤트 수신
 function renderAll() {
   S.playback._recv = Date.now();
-  renderServer(); renderPlayer(); renderPlaylist(); renderUsers(); renderLobby(); renderSettings();
+  renderServer(); renderPlayer(); renderPlaylist(); renderUsers(); renderLobby(); renderPosters(); renderSettings();
   $('statList').textContent = S.media.playlist.length;
   $('logs').textContent = S.logs.join('\n');
 }
@@ -474,6 +517,7 @@ bridge.on('item', (it) => {
 });
 bridge.on('config', (c) => { if (!S) return; S.config = c; });
 bridge.on('bans', (b) => { if (!S) return; S.bans = b; renderUsers(); });
+bridge.on('posters', (p) => { if (!S) return; S.posters = p; renderPosters(); });
 
 (async () => {
   S = await call('state');
