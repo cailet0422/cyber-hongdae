@@ -117,6 +117,13 @@ class Playback extends EventEmitter {
     }
     if (this.itemId) this.index = pl.indexOf(this.itemId);
     const it = this.current();
+    // 상영 중인 항목을 다시 준비하게 됐으면(재생 방식 변경·원본 변경 등) 그 자리에서 멈춰 두고, 준비되면 이어서 재생
+    if (it && this.playing && !this.waiting && it.status !== 'ready') {
+      this.pos = this.position();
+      this.playing = false;
+      this.waiting = true;
+      clearTimeout(this._timer);
+    }
     if (it && this.waiting && it.status === 'ready') return this._sync();
     if (it && it.status === 'error' && !this.stopped) this._autoSkip();
     this._emit();

@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const { EventEmitter } = require('events');
 const { TOOLS, run, hasNvenc } = require('./tools');
 const { parseSubtitle, SUB_EXT } = require('./subtitles');
+const { LiveManager, livePlan } = require('./live');
 
 const VIDEO_EXT = ['mp4', 'm4v', 'mov', 'webm', 'mkv', 'avi', 'wmv', 'flv', 'ts', 'm2ts', 'mts', 'mpg', 'mpeg', 'ogv', '3gp', 'mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus'];
 const IMAGE_EXT = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'];
@@ -26,11 +27,17 @@ class MediaManager extends EventEmitter {
     this.subDir = path.join(dataDir, 'subs');
     fs.mkdirSync(this.cacheDir, { recursive: true });
     fs.mkdirSync(this.subDir, { recursive: true });
-    this.settings = settings; // { maxHeight, ytSubs, subLangs, prefetch }
+    this.settings = settings; // { maxHeight, ytSubs, subLangs, prefetch, keepCache, directPlay }
     this.items = new Map();
     this.playlist = [];
     this.secret = crypto.randomBytes(16).toString('hex');
     this.jobs = new Map(); // id → AbortController
+    this.subJobs = new Map(); // id → AbortController (내장 자막 추출, 파일 전체를 읽으므로 한 번에 하나씩)
+    this.subQueue = [];
+    this.subRunning = 0;
+    this.live = new LiveManager({ dir: path.join(this.cacheDir, 'live'), settings: () => this.settings, log: this.log });
+    // 바로 재생하던 원본이 바뀌었거나 사라졌으면 다시 준비 (사라졌으면 '파일을 찾을 수 없습니다'로 표시됨)
+    this.live.onStale = (id) => { const it = this.items.get(id); if (it?.status === 'ready' && it.conv) this.retry(id); };
     this.queue = [];
     this.running = 0;
     this.currentIndex = 0;
@@ -82,6 +89,7 @@ class MediaManager extends EventEmitter {
       }
       this.playlist = (j.playlist || []).filter((id) => this.items.has(id));
       for (const id of this.playlist) if (this.items.get(id).status === 'queued') this._enqueue(id);
+      this._resumeSubs();
     } catch {}
   }
   save() {
@@ -101,7 +109,9 @@ class MediaManager extends EventEmitter {
       id: it.id, title: it.title, kind: it.kind, source: it.source, status: it.status, progress: it.progress || 0,
       duration: it.duration || 0, error: it.error || null, live: !!it.live, mode: it.mode, isImage: !!it.isImage,
       subs: (it.subs || []).map((s) => ({ id: s.id, label: s.label, count: s.count })), sub: it.sub || null, role: it.role || 'playlist',
-      statusText: it.statusText || '',
+      statusText: it.statusText || '', subPending: !!it.subPending,
+      // 원본에서 바로 재생: remux(그대로) | audio(소리만 변환) | video(영상 변환)
+      conv: it.conv && it.localPath ? (it.conv.v === 'encode' ? 'video' : it.conv.a === 'encode' ? 'audio' : 'remux') : null,
     };
   }
 
@@ -207,8 +217,10 @@ class MediaManager extends EventEmitter {
     const it = this.items.get(id);
     if (!it) return;
     this.jobs.get(id)?.abort();
+    this.subJobs.get(id)?.abort();
+    this.live.stop(id);
     this.playlist = this.playlist.filter((x) => x !== id);
-    if (it.cached && it.localPath && it.localPath.startsWith(this.cacheDir)) fs.rm(it.localPath, { force: true }, () => {});
+    if (it.cached && it.localPath && isInside(it.localPath, this.cacheDir)) rmRetry(it.localPath);   // 방금 멈춘 ffmpeg가 아직 쥐고 있을 수 있음
     for (const s of it.subs || []) fs.rm(path.join(this.subDir, s.id + '.json'), { force: true }, () => {});
     this.items.delete(id);
     this._emit();
@@ -231,11 +243,41 @@ class MediaManager extends EventEmitter {
   retry(id) {
     const it = this.items.get(id);
     if (!it) return;
+    this.live.stop(id);
     it.status = 'queued'; it.error = null; it.progress = 0;
     this._enqueue(id);
     this._emit();
   }
   rename(id, title) { const it = this.items.get(id); if (it) { it.title = String(title).slice(0, 200); this._emit(); } }
+  // '원본에서 바로 재생' 설정을 바꿨을 때: 이미 준비된 내 PC 영상도 새 방식으로 다시 준비
+  applyDirectPlay() {
+    const on = this.settings.directPlay !== false;
+    for (const it of this.items.values()) {
+      if (it.isImage || it.role === 'lobby') continue;
+      // 링크에서 내려받아 캐시에서 바로 재생하던 것: 다시 받지 않고 받아 둔 파일로 다시 준비
+      if (it.kind !== 'file') {
+        if (!on && it.status === 'ready' && it.conv && it.localPath && isInside(it.localPath, this.cacheDir)) {
+          it.reprep = it.localPath;
+          this.retry(it.id);
+        }
+        continue;
+      }
+      // 준비(변환) 중이던 것은 멈추고, 그 작업이 끝나면 새 방식으로 다시 준비 (대기 중인 것은 그대로 두면 새 설정으로 준비됨)
+      const job = this.jobs.get(it.id);
+      if (it.status === 'preparing' && job) {
+        job.requeue = true; job.abort();
+        rmRetry(path.join(this.cacheDir, it.id + '.mp4'));   // 쓰다 만 변환 파일
+        this._update(it, { status: 'queued', progress: 0, statusText: '' });
+        continue;
+      }
+      if (it.status !== 'ready') continue;
+      const converted = it.cached && it.localPath && isInside(it.localPath, this.cacheDir);
+      if (on ? !converted || it.noLive : !it.conv) continue;   // 길이를 몰라 바로 재생할 수 없는 파일은 변환해 둔 그대로
+      if (converted) rmRetry(it.localPath);
+      Object.assign(it, { localPath: null, cached: false, conv: null });
+      this.retry(it.id);
+    }
+  }
 
   // ------------------------------------------------------------ 자막
   _attachSubFile(it, file, emit = true, label = null) {
@@ -314,7 +356,7 @@ class MediaManager extends EventEmitter {
         .finally(() => {
           this.running--;
           this.jobs.delete(id);
-          if (!ac.signal.aborted && it.status === 'queued' && this.items.has(id)) this.queue.push(id); // 메타정보 단계 후 재대기
+          if ((!ac.signal.aborted || ac.requeue) && it.status === 'queued' && this.items.has(id)) this.queue.push(id); // 메타정보 단계 후 / 방식이 바뀌어 다시 대기
           this._pump();
         });
     }
@@ -322,6 +364,16 @@ class MediaManager extends EventEmitter {
 
   async _prepare(it, signal) {
     if (it.kind === 'file') return this._prepareLocal(it, it.source, signal);
+    // 재생 방식만 바뀐 내려받은 항목: 받아 둔 파일로 다시 준비
+    if (it.reprep) {
+      const f = it.reprep;
+      delete it.reprep;
+      if (fs.existsSync(f)) {
+        await this._prepareLocal(it, f, signal);
+        if (it.localPath !== f) this._rmAfterSubs(it, f);
+        return;
+      }
+    }
     if (it.kind === 'hls') {
       this._update(it, { status: 'ready', progress: 1, statusText: '' });
       return;
@@ -346,13 +398,14 @@ class MediaManager extends EventEmitter {
     }
   }
 
-  // 로컬 파일: 브라우저 재생 가능 여부 확인 → 필요시 remux/트랜스코딩, 내장 자막 추출
+  // 로컬 파일: 브라우저 재생 가능 여부 확인 → 그대로 / 원본에서 바로 재생(실시간 변환) / 캐시에 변환. 내장 자막은 따로 추출
   async _prepareLocal(it, file, signal) {
     if (!fs.existsSync(file)) throw new Error('파일을 찾을 수 없습니다: ' + file);
-    if (it.isImage) return this._update(it, { status: 'ready', progress: 1, localPath: file });
+    if (it.isImage) return this._update(it, { status: 'ready', progress: 1, localPath: file, conv: null });
     this._update(it, { status: 'preparing', statusText: '파일 분석 중', progress: 0 });
     const info = await ffprobe(file);
     if (!info) throw new Error('ffprobe로 파일을 읽을 수 없습니다');
+    if (signal.aborted) return;
     const duration = parseFloat(info.format?.duration) || 0;
     const v = info.streams.find((s) => s.codec_type === 'video' && !(s.disposition?.attached_pic));
     const a = info.streams.find((s) => s.codec_type === 'audio');
@@ -361,26 +414,16 @@ class MediaManager extends EventEmitter {
     const vOk = !v || (OK_VCODEC.includes(v.codec_name) && !/10le|12le|422|444/.test(v.pix_fmt || ''));
     const aOk = !a || (OK_ACODEC.includes(a.codec_name) && (a.channels || 2) <= 2);
     const containerOk = ['mp4', 'm4v', 'mov', 'webm', 'mp3', 'm4a', 'ogg', 'opus', 'flac', 'wav'].includes(ext) && /mp4|mov|webm|matroska|mp3|ogg|flac|wav/.test(fmt);
+    // 외부 자막이 없으면 내장 텍스트 자막 추출 (MKV 애니 등). 큰 파일은 끝까지 읽어야 해서 재생 준비와 따로 진행
+    this._extractSubs(it, file, info);
+    const ready = (patch) => this._update(it, { status: 'ready', progress: 1, duration, statusText: '', conv: null, noLive: false, ...patch });
 
-    // 외부 자막이 없으면 내장 텍스트 자막 추출 (MKV 애니 등)
-    if (!(it.subs || []).length) {
-      const subs = info.streams.filter((s) => s.codec_type === 'subtitle' && ['ass', 'ssa', 'subrip', 'mov_text', 'webvtt', 'text'].includes(s.codec_name));
-      subs.sort((x, y) => langScore(y) - langScore(x));
-      for (const s of subs.slice(0, 3)) {
-        const isAss = s.codec_name === 'ass' || s.codec_name === 'ssa';
-        const out = path.join(this.cacheDir, `${it.id}_s${s.index}.${isAss ? 'ass' : 'srt'}`);
-        const r = await run(TOOLS.ffmpeg, ['-y', '-v', 'error', '-i', file, '-map', `0:${s.index}`, '-f', isAss ? 'ass' : 'srt', out], { signal, timeout: 120000 });
-        if (r.code === 0 && fs.existsSync(out)) {
-          const cues = parseSubtitle(fs.readFileSync(out), out);
-          if (cues.length) this._storeSub(it, cues, `내장 자막 #${s.index}${s.tags?.language ? ' (' + s.tags.language + ')' : ''}${s.tags?.title ? ' ' + s.tags.title : ''}`, false);
-          fs.rm(out, { force: true }, () => {});
-        }
-      }
-    }
-
-    if (vOk && aOk && containerOk) {
-      this._update(it, { status: 'ready', progress: 1, localPath: file, duration, statusText: '' });
-      return;
+    if (vOk && aOk && containerOk) return ready({ localPath: file });
+    // 원본에서 바로 재생: 캐시에 통째로 변환하지 않고 재생하는 부분만 그때그때 변환 (로비 전광판의 반복 재생 영상은 미리 변환)
+    if (this.settings.directPlay !== false && it.role !== 'lobby' && duration > 0) {
+      const conv = await livePlan(file, info, v, a);
+      if (signal.aborted) return;
+      if (conv) return ready({ localPath: file, conv, cached: isInside(file, this.cacheDir) });
     }
     // 변환
     const out = path.join(this.cacheDir, it.id + '.mp4');
@@ -403,7 +446,79 @@ class MediaManager extends EventEmitter {
     });
     if (signal.aborted) return;
     if (r.code !== 0) throw new Error('변환 실패: ' + r.stderr.split('\n').filter(Boolean).slice(-2).join(' '));
-    this._update(it, { status: 'ready', progress: 1, localPath: out, cached: true, duration, statusText: '' });
+    ready({ localPath: out, cached: true, noLive: !(duration > 0) });
+  }
+
+  // 내장 텍스트 자막 추출: 한 번 읽으면서 고른 트랙을 모두 뽑는다. 큰 파일은 끝까지 읽어야 하므로 한 번에 하나씩,
+  // 지금 상영 위치에 가까운 항목부터. 서버를 끄면 멈췄다가 다시 열 때 이어서(처음부터) 진행
+  _extractSubs(it, file, info) {
+    if ((it.subs || []).length || this.subJobs.has(it.id)) return;
+    const subs = info.streams.filter((s) => s.codec_type === 'subtitle' && ['ass', 'ssa', 'subrip', 'mov_text', 'webvtt', 'text'].includes(s.codec_name));
+    subs.sort((x, y) => langScore(y) - langScore(x));
+    if (!subs.length) return;
+    it.subSrc = file;   // 자막 트랙 번호가 가리키는 파일 (내려받은 원본은 변환 뒤 지워지므로 추출이 끝난 뒤에 지움)
+    it.subPending = subs.slice(0, 3).map((s) => ({
+      i: s.index, ass: s.codec_name === 'ass' || s.codec_name === 'ssa',
+      label: `내장 자막 #${s.index}${s.tags?.language ? ' (' + s.tags.language + ')' : ''}${s.tags?.title ? ' ' + s.tags.title : ''}`,
+    }));
+    this._runSubs(it, file);
+  }
+  _runSubs(it, file) {
+    const ac = new AbortController();
+    this.subJobs.set(it.id, ac);
+    this.subQueue.push({ it, file, ac });
+    this._pumpSubs();
+  }
+  // 자막 추출이 끝난 뒤(없으면 바로) 캐시의 임시 원본을 지운다
+  _rmAfterSubs(it, f) {
+    const job = this.subJobs.get(it.id);
+    if (job) job.after = () => rmRetry(f); else rmRetry(f);
+  }
+  _pumpSubs() {
+    while (this.subRunning < 1) {
+      this.subQueue = this.subQueue.filter((j) => {
+        const keep = !j.ac.signal.aborted && this.items.get(j.it.id) === j.it;
+        if (!keep) j.ac.after?.();
+        return keep;
+      });
+      if (!this.subQueue.length) return;
+      const rank = (j) => { const i = this.playlist.indexOf(j.it.id); return j.it.role === 'lobby' ? -1 : i >= this.currentIndex ? i - this.currentIndex : 1000 + i; };
+      const job = this.subQueue.reduce((a, b) => (rank(b) < rank(a) ? b : a));
+      this.subQueue.splice(this.subQueue.indexOf(job), 1);
+      this.subRunning++;
+      this._subJob(job).finally(() => { this.subRunning--; this._pumpSubs(); });
+    }
+  }
+  _subJob({ it, file, ac }) {
+    const outs = it.subPending.map((s) => ({ ...s, out: path.join(this.cacheDir, `${it.id}_s${s.i}.${s.ass ? 'ass' : 'srt'}`) }));
+    const args = ['-y', '-v', 'error', '-nostdin', '-i', file];
+    for (const o of outs) args.push('-map', `0:${o.i}`, '-f', o.ass ? 'ass' : 'srt', o.out);
+    return run(TOOLS.ffmpeg, args, { signal: ac.signal }).then(() => {
+      if (this.subJobs.get(it.id) === ac) this.subJobs.delete(it.id);
+      const alive = !ac.signal.aborted && this.items.get(it.id) === it;
+      for (const o of outs) {
+        try {
+          const cues = alive && fs.existsSync(o.out) ? parseSubtitle(fs.readFileSync(o.out), o.out) : [];
+          if (cues.length) this._storeSub(it, cues, o.label, false);
+        } catch {}
+        fs.rm(o.out, { force: true }, () => {});
+      }
+      ac.after?.();
+      if (!alive) return;
+      it.subPending = null;
+      it.subSrc = null;
+      this._emit();   // 재생 상태도 다시 퍼져서 상영 중이면 접속자 화면에 자막이 붙는다
+    });
+  }
+  _resumeSubs() {
+    for (const it of this.items.values()) {
+      if (!it.subPending?.length || this.subJobs.has(it.id) || it.status !== 'ready') continue;
+      const file = it.subSrc || (it.kind === 'file' ? it.source : it.localPath);
+      if (!file || !fs.existsSync(file)) { it.subPending = it.subSrc = null; continue; }
+      this._runSubs(it, file);
+      // 남아 있던 임시 원본(변환 뒤 지우려던 내려받은 파일)은 추출이 끝나면 지운다
+      if (file !== it.localPath && file !== it.source && isInside(file, this.cacheDir)) this.subJobs.get(it.id).after = () => rmRetry(file);
+    }
   }
 
   async _downloadDirect(it, signal) {
@@ -422,7 +537,7 @@ class MediaManager extends EventEmitter {
     await new Promise((res) => ws.end(res));
     it.cached = true;
     await this._prepareLocal(it, out, signal);
-    if (it.localPath !== out) fs.rm(out, { force: true }, () => {});
+    if (it.localPath !== out) this._rmAfterSubs(it, out);
   }
 
   // yt-dlp: 메타정보 (재생목록이면 항목 펼치기)
@@ -527,6 +642,8 @@ class MediaManager extends EventEmitter {
   playInfo(it) {
     if (!it || it.status !== 'ready') return null;
     const base = { id: it.id, title: it.title, duration: it.duration || 0, live: !!it.live, image: !!it.isImage, sub: it.sub ? `/subs/${it.sub}.json` : null };
+    const key = this.live.key(it);
+    if (key) return { ...base, type: 'hls', conv: true, url: `/m/${it.id}/live/${key}/index.m3u8` };
     if (it.localPath) return { ...base, type: it.isImage ? 'image' : 'file', url: `/m/${it.id}/file` };
     if (it.remote?.master) return { ...base, type: 'hls', url: `/m/${it.id}/master.m3u8?v=${it.remote.at}` };
     if (it.kind === 'hls' || it.remote?.hls) {
@@ -539,18 +656,22 @@ class MediaManager extends EventEmitter {
 
   // ------------------------------------------------------------ 캐시
   cacheSize() {
-    let n = 0;
-    for (const f of listDir(this.cacheDir)) { try { n += fs.statSync(f).size; } catch {} }
+    let n = this.live.size();
+    for (const f of listDir(this.cacheDir)) { try { const st = fs.statSync(f); if (st.isFile()) n += st.size; } catch {} }
     return n;
   }
   clearCache() {
-    const used = new Set([...this.items.values()].map((i) => i.localPath).filter(Boolean));
-    for (const f of listDir(this.cacheDir)) if (!used.has(f)) fs.rm(f, { force: true }, () => {});
+    const used = new Set([...this.items.values()].flatMap((i) => [i.localPath, i.subPending && i.subSrc]).filter(Boolean));
+    const extracting = (f) => [...this.subJobs.keys()].some((id) => path.basename(f).startsWith(id + '_s'));
+    for (const f of listDir(this.cacheDir)) if (!used.has(f) && f !== this.live.dir && !extracting(f)) fs.rm(f, { force: true }, () => {});
   }
   // 서버를 끌 때: 진행 중인 준비 작업을 멈추고 캐시 폴더의 영상을 모두 지운다 (내가 추가한 원본 파일은 캐시 폴더 밖이라 그대로).
   // 캐시 영상을 쓰던 항목은 '대기'로 돌려 두고, 서버를 다시 열 때 requeue()로 다시 준비한다.
   purgeCache() {
     for (const ac of this.jobs.values()) ac.abort();
+    for (const ac of this.subJobs.values()) ac.abort();   // 자막 추출은 subPending을 남겨 두고 다시 열 때 이어서
+    this.subJobs.clear();
+    this.live.stopAll();
     const root = path.resolve(this.cacheDir) + path.sep;
     for (const it of this.items.values()) {
       const inCache = it.cached && it.localPath && path.resolve(it.localPath).startsWith(root);
@@ -561,6 +682,7 @@ class MediaManager extends EventEmitter {
     let files = 0, bytes = 0;
     const busy = [];
     for (const f of listDir(this.cacheDir)) {
+      if (f === this.live.dir) continue;   // 바로 재생 조각은 stopAll이 정리
       let size = 0;
       try { size = fs.statSync(f).size; } catch {}
       try { fs.rmSync(f, { force: true }); files++; bytes += size; } catch { busy.push(f); }
@@ -573,6 +695,7 @@ class MediaManager extends EventEmitter {
   // 서버를 열 때: 대기 중인 항목을 다시 준비 큐에 넣는다
   requeue() {
     for (const it of this.items.values()) if (it.status === 'queued') this._enqueue(it.id);
+    this._resumeSubs();
   }
 }
 
@@ -587,6 +710,9 @@ function walk(dir, out = [], depth = 0) {
   return out;
 }
 function listDir(dir) { try { return fs.readdirSync(dir).map((f) => path.join(dir, f)); } catch { return []; } }
+function isInside(file, dir) { return path.resolve(file).toLowerCase().startsWith(path.resolve(dir).toLowerCase() + path.sep); }
+// 방금 멈춘 ffmpeg가 아직 파일을 쥐고 있으면(EBUSY) 잠시 뒤 다시 지운다 (Node는 recursive일 때만 maxRetries를 씀)
+function rmRetry(f) { fs.rm(f, { force: true, recursive: true, maxRetries: 10, retryDelay: 300 }, () => {}); }
 function matchSubs(video, candidates) {
   const base = path.basename(video).replace(/\.[^.]+$/, '').toLowerCase();
   const found = candidates.filter((s) => {

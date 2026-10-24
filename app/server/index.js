@@ -36,8 +36,9 @@ const DEFAULT_CONFIG = {
   names: ['유이', '미오', '리츠', '무기', '아즈사', '우이', '노도카', '준', '사와코', '스미레', '나오'],
   chat: { slowMode: 0, maxLen: 200, enabled: true },
   customModels: { enabled: true, maxMB: 60 },
+  mmdPack: false, // 기본 캐릭터는 얼굴 없는 인간형. 켜면 직접 넣은 MMD 모델 팩(PMD/VPD)을 대신 사용
   autoUpdate: true,
-  media: { maxHeight: 1080, ytSubs: true, subLangs: 'ko.*,ko,en.*,en,ja', prefetch: 3, keepCache: false },
+  media: { maxHeight: 1080, ytSubs: true, subLangs: 'ko.*,ko,en.*,en,ja', prefetch: 3, keepCache: false, directPlay: true },
   sign4: {
     hall: '4관', floor: '10층', autoTitle: true, title: '', message: '관람고객님은 지금 입장하시기 바랍니다.',
     messageEn: 'Please enter the Screen 4', showClock: true, bg: 'default', color: '#ffffff',
@@ -78,6 +79,8 @@ class CinemaServer extends EventEmitter {
     this.config.posters = Array.from({ length: POSTER_SLOTS }, (_, i) => (ps[i] && POSTER_FILE.test(ps[i].file) ? { file: ps[i].file, name: String(ps[i].name || '') } : null));
     this.media = new MediaManager({ dataDir, cacheDir, settings: this.config.media, log: (m) => this.log(m) });
     this.playback = new Playback(this.media);
+    // 원본 바로 재생: 지금 상영 중인 항목이면 서버 기준 재생 위치 근처를 미리 만들어 둔다
+    this.media.live.getPos = (id) => (this.playback.itemId === id && !this.playback.stopped ? this.playback.position() : null);
     this.users = new Map();
     this.seats = new Map(); // seatId → userId
     this.chatLog = [];
@@ -99,8 +102,10 @@ class CinemaServer extends EventEmitter {
   // ---------------------------------------------------------------- 설정
   saveConfig() { fs.writeFileSync(path.join(this.dataDir, 'config.json'), JSON.stringify(this.config, null, 2)); }
   setConfig(patch) {
+    const directPlay = this.config.media.directPlay !== false;
     this.config = deepMerge(this.config, patch);
     this.media.settings = this.config.media;
+    if ((this.config.media.directPlay !== false) !== directPlay) this.media.applyDirectPlay();
     this.saveConfig();
     this.broadcast({ t: 'cfg', d: this.publicConfig() });
     this.emit('config', this.config);
@@ -262,7 +267,7 @@ class CinemaServer extends EventEmitter {
     });
     app.get('/api/info', (req, res) => res.json({
       name: this.config.serverName, needPassword: !!this.config.password, characters: CHARACTERS,
-      online: this.users.size, max: this.config.maxUsers, version: VERSION, assets: installedAssets(),
+      online: this.users.size, max: this.config.maxUsers, version: VERSION, assets: installedAssets(this.config.mmdPack),
       customModels: this.config.customModels,
     }));
     app.get('/subs/:sid.json', (req, res) => {
@@ -284,7 +289,26 @@ class CinemaServer extends EventEmitter {
     app.get('/m/:id/file', (req, res) => {
       const it = this.media.get(req.params.id);
       if (!it?.localPath) return res.status(404).end();
-      res.sendFile(it.localPath, { acceptRanges: true, cacheControl: false, headers: { 'Cache-Control': 'private, max-age=3600' } });
+      // 원본 경로에 점으로 시작하는 폴더가 있어도 보낸다 (기본값은 무시하고 404)
+      res.sendFile(it.localPath, { acceptRanges: true, cacheControl: false, dotfiles: 'allow', headers: { 'Cache-Control': 'private, max-age=3600' } });
+    });
+    // 원본 바로 재생 (실시간 HLS): 재생목록은 즉시, 조각은 만들어질 때까지 잠시 기다렸다가 보낸다
+    app.get('/m/:id/live/:key/index.m3u8', async (req, res) => {
+      const s = await this.media.live.get(this.media.get(req.params.id), req.params.key);
+      if (!s) return res.status(404).end();
+      res.type('application/vnd.apple.mpegurl').send(s.playlist());
+    });
+    app.get('/m/:id/live/:key/:seg.ts', async (req, res) => {
+      const s = await this.media.live.get(this.media.get(req.params.id), req.params.key);
+      if (!s || !/^\d+$/.test(req.params.seg)) return res.status(404).end();
+      const ac = new AbortController();
+      res.on('close', () => ac.abort());
+      try {
+        const f = await s.segment(+req.params.seg, ac.signal);
+        res.sendFile(f, { dotfiles: 'allow', headers: { 'Content-Type': 'video/mp2t', 'Cache-Control': 'private, max-age=3600' } }, (e) => { if (e && !res.headersSent) res.status(404).end(); });
+      } catch (e) {
+        if (!res.headersSent && !res.destroyed) res.status(e.status && e.status < 499 ? e.status : 503).end();
+      }
     });
     // 원격 직접 링크 프록시 (CORS 회피 + Range 전달)
     app.get('/m/:id/r', async (req, res) => {
@@ -423,6 +447,7 @@ class CinemaServer extends EventEmitter {
     this._setStatus('stopped');
     this.emit('users', []);
     this.log('서버 종료');
+    this.media.live.stopAll();
     // 기본: 서버를 끄면 내려받은·변환한 영상 캐시를 지움 (설정 '서버를 꺼도 영상 캐시 남기기'로 끌 수 있음)
     if (!this.config.media.keepCache) {
       const r = this.media.purgeCache();
@@ -711,8 +736,9 @@ async function proxy(req, res, url, headers) {
   }
 }
 
-// 사용자가 직접 넣은 모델 팩(PMD)/포즈(VPD) 확인 — 없으면 클라이언트가 오리지널 아바타를 사용
-function installedAssets() {
+// 사용자가 직접 넣은 모델 팩(PMD)/포즈(VPD) 확인 — 설정에서 켜지 않았거나 없으면 클라이언트가 인간형 기본 아바타를 사용
+function installedAssets(enabled) {
+  if (!enabled) return { models: [], poses: [] };
   const ids = CHARACTERS.map((c) => c.id);
   return {
     models: ids.filter((id) => fs.existsSync(path.join(CLIENT_DIR, 'assets', 'models', id, 'model.pmd'))),

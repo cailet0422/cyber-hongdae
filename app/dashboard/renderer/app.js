@@ -129,9 +129,16 @@ dz.addEventListener('drop', async (e) => {
   }
 });
 
+const CONV = {
+  remux: ['원본 바로 재생', '변환 없이 원본 파일에서 바로 재생합니다 (재생하는 부분만 그때그때 다시 포장)'],
+  audio: ['원본 바로 재생 · 소리 변환', '원본 파일에서 바로 재생하고, 브라우저가 못 트는 소리만 재생하는 부분씩 변환합니다'],
+  video: ['원본 바로 재생 · 실시간 변환', '캐시에 미리 변환하지 않고 원본 파일에서 재생하는 부분만 그때그때 변환합니다 (변환하는 동안 이 PC의 CPU/GPU를 씁니다)'],
+};
 function statusHtml(it) {
   const pct = Math.round((it.progress || 0) * 100);
-  if (it.status === 'ready') return `<span class="st-ready">● 준비 완료</span>${it.live ? ' <b style="color:#ff5a5a">LIVE</b>' : ''}${it.mode === 'stream' && it.kind !== 'file' ? ' <span class="muted">(스트리밍)</span>' : ''}`;
+  if (it.status === 'ready') return `<span class="st-ready">● 준비 완료</span>${it.live ? ' <b style="color:#ff5a5a">LIVE</b>' : ''}${it.mode === 'stream' && it.kind !== 'file' ? ' <span class="muted">(스트리밍)</span>' : ''}`
+    + (CONV[it.conv] ? ` <span class="muted" title="${CONV[it.conv][1]}">(${CONV[it.conv][0]})</span>` : '')
+    + (it.subPending ? ' <span class="muted" title="큰 파일은 끝까지 읽어야 해서 시간이 걸립니다. 재생은 먼저 할 수 있습니다">· 내장 자막 추출 중</span>' : '');
   if (it.status === 'error') return `<span class="st-error" title="${esc(it.error)}">✖ 실패: ${esc((it.error || '').slice(0, 40))}</span>`;
   if (it.status === 'queued') return `<span class="st-wait">◌ ${esc(it.statusText || '대기 중')}</span>`;
   return `<span class="st-wait">${esc(it.statusText || '준비 중')} ${pct}%</span><div class="prog"><i style="width:${pct}%"></i></div>`;
@@ -408,9 +415,11 @@ function renderSettings() {
   $('cfgYtSubs').checked = c.media.ytSubs !== false;
   $('cfgPrefetch').value = c.media.prefetch ?? 3;
   $('cfgKeepCache').checked = !!c.media.keepCache;
+  $('cfgDirectPlay').checked = c.media.directPlay !== false;
   $('cfgNames').value = c.names.join(', ');
   $('cfgCustom').checked = c.customModels?.enabled !== false;
   $('cfgCustomMB').value = c.customModels?.maxMB ?? 60;
+  $('cfgMmdPack').checked = !!c.mmdPack;
   $('chatEnabled').checked = c.chat.enabled;
   $('slowMode').value = c.chat.slowMode;
   $('maxLen').value = c.chat.maxLen;
@@ -430,7 +439,8 @@ $('cfgSave').onclick = async () => {
     serverName: $('cfgName').value.trim() || '사이버 홍대입구', maxUsers: Math.max(1, +$('cfgMax').value || 150),
     names: names.length ? names : S.config.names, stickColors: sticks,
     customModels: { enabled: $('cfgCustom').checked, maxMB: Math.min(500, Math.max(1, +$('cfgCustomMB').value || 60)) },
-    media: { maxHeight: +$('cfgHeight').value, ytSubs: $('cfgYtSubs').checked, prefetch: Math.max(0, +$('cfgPrefetch').value || 0), keepCache: $('cfgKeepCache').checked },
+    mmdPack: $('cfgMmdPack').checked,
+    media: { maxHeight: +$('cfgHeight').value, ytSubs: $('cfgYtSubs').checked, prefetch: Math.max(0, +$('cfgPrefetch').value || 0), keepCache: $('cfgKeepCache').checked, directPlay: $('cfgDirectPlay').checked },
   });
   toast('✅ 설정을 저장했습니다');
 };

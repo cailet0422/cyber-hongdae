@@ -35,8 +35,8 @@ The host opens a server from their own PC with one click. Friends then **just op
   - Self-hosted web server directory listings.
   - Any of the thousands of sites yt-dlp supports.
 - **Subtitles**: SMI (CP949 auto-detected), SRT, VTT, ASS/SSA (position, color, alignment). Embedded MKV subtitles and YouTube captions are attached automatically.
-- **Automatic transcoding**: formats browsers can't play (HEVC, 10-bit, AC3, AVI, …) are converted with ffmpeg, using NVENC if available.
-- **5 original avatars**, made from scratch in code (clean-room), in the K-ON! members' theme colors: Yui red, Mio blue, Ritsu yellow, Mugi pink, Azusa green. You can switch at entry or in settings.
+- **Direct play of huge files**: formats browsers can't play as-is (MKV, HEVC, 10-bit, AC3/DTS, AVI, …) are streamed **straight from the original file**, with no up-front conversion into a cache. Only the part being watched is remuxed or transcoded on the fly (HLS), so a multi-hour, tens-of-GB movie plays right after you add it. H.264 video is passed through untouched (only the container, and if needed the audio, is converted); HEVC/10-bit video is transcoded in real time to ≤1080p, using NVENC if available. Turn off **Settings → 큰 영상도 캐시에 미리 변환하지 않고 원본 파일에서 바로 재생** (*play big files directly from the original*) to get the old convert-first behaviour. Embedded MKV subtitles are extracted in the background and attached when ready.
+- **Default avatar**: a faceless humanoid mannequin (no eyes, nose or mouth, just a human body shape), generated in code, in 5 body colors: Yui red, Mio blue, Ritsu yellow, Mugi pink, Azusa green. You can switch at entry or in settings. To use a K-ON! MMD model pack you installed yourself instead, turn on **Settings → 기본 캐릭터 대신 직접 넣은 MMD 모델 팩 사용** (*use the installed MMD model pack*).
 - **Bring your own 3D model**: VRM, GLB/GLTF, FBX, PMX/PMD, OBJ, DAE, 3DS, STL, PLY or ZIP, visible to everyone.
 - **Random nicknames** such as `유이3421` or `리츠1346`, assigned on every join to prevent cliques.
 - **King-Blade-style light sticks** in 5 colors, with a wave animation.
@@ -66,7 +66,7 @@ Notes:
 
 - No admin rights are required; the app installs into your user folder.
 - Settings and the playlist are stored in `%APPDATA%\cyber-hongdae\data`.
-- Downloaded/converted movie files (the cache) go to a `…\CyberHongdae-cache` folder **next to the install folder** (same drive), not the C: user folder. Open it with **📂 캐시 폴더** on the media tab. **By default the cache is deleted when you stop the server** and re-downloaded/converted the next time you start the app or open the server; to keep it, turn on **Settings → 서버를 꺼도 영상 캐시 남기기** (*keep the movie cache when the server stops*). Uninstalling the app deletes it (updates keep it).
+- Downloaded/converted movie files (the cache) go to a `…\CyberHongdae-cache` folder **next to the install folder** (same drive), not the C: user folder. Open it with **📂 캐시 폴더** on the media tab. **By default the cache is deleted when you stop the server** and re-downloaded/converted the next time you start the app or open the server; to keep it, turn on **Settings → 서버를 꺼도 영상 캐시 남기기** (*keep the movie cache when the server stops*). Uninstalling the app deletes it (updates keep it). Local video files are played from their original location and are not copied into the cache; only a few minutes of segments around the playback position live briefly in its `live` subfolder.
 - To uninstall, use **Settings → Apps**.
 - **Auto-update**: the app checks GitHub Releases on startup and every 6 hours, downloads new versions in the background, and installs them when you close it. To install right away, use the **지금 재시작하고 업데이트** (*restart and update now*) button. To turn this off or check manually, go to **Settings → 프로그램 업데이트** (*program update*).
 
@@ -208,11 +208,13 @@ node scripts/bots.js 80 ws://localhost:7777/ws 60   # load test (80 bots ≈ 130
 |---|---|
 | `app/server/index.js` | HTTP and WebSocket server, video proxy with HLS rewriting |
 | `app/server/media.js` | yt-dlp and ffmpeg pipeline |
+| `app/server/live.js` | direct play: on-demand HLS segments cut from the original file around the playback position (video copy or transcode) |
+| `app/server/keyframes.js` | keyframe index from MKV Cues / MP4 stss without reading the whole file |
 | `app/server/playback.js` | server-clock synchronized playback |
 | `app/server/subtitles.js` | subtitle parsers |
 | `app/server/tunnel.js` | Cloudflare, Tailscale Funnel and UPnP exposure |
 | `app/client/` | Three.js r168 client, no bundler |
-| `app/client/js/procedural-avatar.js` | original avatar generator, using MMD bone names |
+| `app/client/js/procedural-avatar.js` | default avatar (faceless humanoid mannequin) generator, using MMD bone names |
 | `app/client/js/custom-model.js` | custom model loader (all formats + ZIP) and humanoid rig detection |
 | `app/client/js/avatar.js` | rig-agnostic procedural animation |
 | `app/blender/build_cinema.py` | map generator (Blender 4.2) |

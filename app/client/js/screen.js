@@ -42,6 +42,22 @@ async function getHls() {
   return HlsMod;
 }
 
+// 긴 영상은 지나간 구간을 메모리에서 비우고, 너무 멀리 앞서 받지 않는다. 시작 위치는 재생목록을 읽은 뒤 startLoad로 정한다.
+// 원본 바로 재생(conv)은 서버가 조각을 만드는 동안 응답이 몇 초 늦을 수 있으므로 기다리는 시간을 넉넉히, 앞서 받는 양은 적게
+function hlsConfig(item) {
+  const c = { enableWorker: true, autoStartLoad: false, liveSyncDurationCount: 3, maxBufferLength: 30, maxMaxBufferLength: 90, backBufferLength: 30 };
+  if (!item.conv) return c;
+  const policy = (ttfb, load, retries) => ({ default: {
+    maxTimeToFirstByteMs: ttfb, maxLoadTimeMs: load,
+    timeoutRetry: { maxNumRetry: 2, retryDelayMs: 0, maxRetryDelayMs: 0 },
+    errorRetry: { maxNumRetry: retries, retryDelayMs: 1000, maxRetryDelayMs: 4000 },
+  } });
+  return {
+    ...c, maxBufferLength: 20, maxMaxBufferLength: 30, maxBufferHole: 0.5, stretchShortVideoTrack: true, nudgeMaxRetry: 6,
+    manifestLoadPolicy: policy(Infinity, 60000, 3), playlistLoadPolicy: policy(30000, 60000, 3), fragLoadPolicy: policy(30000, 60000, 8),
+  };
+}
+
 export class Cinema {
   constructor({ world, scene, net, prefs, audio }) {
     this.world = world;
@@ -180,7 +196,10 @@ export class Cinema {
       this._loadSubs(null);
       return;
     }
-    if (item.id !== this.itemId || item.url !== this.itemUrl) await this._load(item);
+    if (item.id !== this.itemId || item.url !== this.itemUrl) {
+      await this._load(item);
+      if (this.snap !== snap) return;   // 불러오는 동안 더 새 상태가 왔으면 그쪽이 자막까지 정리
+    }
     this._loadSubs(item.sub);
     this._syncT = 0;
   }
@@ -191,6 +210,7 @@ export class Cinema {
   }
 
   _unload() {
+    this._loadSeq = (this._loadSeq || 0) + 1;   // 아직 기다리는 _load를 무효로
     this.hls?.destroy(); this.hls = null;
     this.video.pause();
     this.video.removeAttribute('src');
@@ -204,27 +224,35 @@ export class Cinema {
 
   async _load(item) {
     this._unload();
+    const seq = this._loadSeq;
     this.itemId = item.id;
     this.itemUrl = item.url;
     this.videoError = null;
     if (item.type === 'image') {
       const img = await loadImg(item.url);
-      if (!img || this.itemId !== item.id) return;
+      if (!img || this._loadSeq !== seq) return;
       const t = new THREE.Texture(img); t.colorSpace = THREE.SRGBColorSpace; t.needsUpdate = true;
       this.imageMode = true; this.imageAspect = img.width / img.height;
       this.videoMat.map = t; this.videoMat.needsUpdate = true; this._fit();
       return;
     }
+    // 늦게 들어왔거나 긴 영상의 중간이면 처음부터 받지 않고 지금 상영 위치부터 불러온다
+    const startAt = () => (item.live ? -1 : Math.max(0, this.targetTime()));
+    const frag = () => (startAt() > 1 ? `#t=${startAt().toFixed(2)}` : '');
     if (item.type === 'hls') {
       const Hls = await getHls();
+      if (this._loadSeq !== seq) return;
       if (Hls.isSupported()) {
-        this.hls = new Hls({ liveSyncDurationCount: 3, maxBufferLength: 30, enableWorker: true });
-        this.hls.loadSource(item.url);
-        this.hls.attachMedia(this.video);
-        this.hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) { this.videoError = d.details; this._drawIdle(); } });
-      } else this.video.src = item.url;
+        const hls = (this.hls = new Hls(hlsConfig(item)));
+        this.hlsFails = 0;
+        hls.on(Hls.Events.MANIFEST_PARSED, () => this.hls === hls && hls.startLoad(startAt()));
+        hls.on(Hls.Events.FRAG_BUFFERED, () => (this.hlsFails = 0));
+        hls.on(Hls.Events.ERROR, (_, d) => this._hlsError(Hls, hls, d));
+        hls.loadSource(item.url);
+        hls.attachMedia(this.video);
+      } else this.video.src = item.url + frag();
     } else {
-      this.video.src = item.url;
+      this.video.src = item.url + frag();
     }
     this._drawIdle();
     this.videoMat.map = this.idle.t;
@@ -235,6 +263,35 @@ export class Cinema {
       this._fit();
     };
     this.video.addEventListener('playing', onPlaying, { once: true });
+  }
+
+  // 치명적 오류도 몇 번은 되살려 본다 (원본 바로 재생은 서버가 위치를 옮기는 동안 잠깐 실패할 수 있음)
+  _hlsError(Hls, hls, d) {
+    if (!d.fatal || this.hls !== hls) return;
+    if (++this.hlsFails > 5 || ![Hls.ErrorTypes.MEDIA_ERROR, Hls.ErrorTypes.NETWORK_ERROR].includes(d.type)) {
+      this.videoError = d.details;
+      this._drawIdle();
+      return;
+    }
+    const at = () => (this.snap?.item?.live ? -1 : Math.max(0, this.targetTime()));
+    if (d.type === Hls.ErrorTypes.MEDIA_ERROR) {
+      if (!hls.levels?.length) { this.videoError = d.details; this._drawIdle(); return; }   // 코덱을 못 트는 등 다시 해도 소용없음
+      hls.recoverMediaError();
+      hls.startLoad(at());   // autoStartLoad를 껐으므로 recoverMediaError가 0초일 때는 다시 받지 않음
+      return;
+    }
+    // 재생목록을 아직 못 읽었으면 startLoad로는 아무것도 요청하지 않으므로 다시 불러온다
+    setTimeout(() => { if (this.hls === hls) hls.levels?.length ? hls.startLoad(at()) : hls.loadSource(hls.url); }, 2000);
+  }
+
+  // 위치 맞추기. hls.js는 뒤로 찾아갈 때 받던 조각을 끝까지 기다리므로(원본 바로 재생은 몇 초 걸릴 수 있음) 받기를 새로 시작한다
+  _seek(t) {
+    const v = this.video;
+    t = Math.max(0, t);
+    this._seekTo = t;
+    if (this.hls && t < v.currentTime - 1) { this.hls.stopLoad(); v.currentTime = t; this.hls.startLoad(t); }
+    else v.currentTime = t;
+    v.playbackRate = 1;
   }
 
   async _loadSubs(url) {
@@ -265,17 +322,23 @@ export class Cinema {
     if (s && s.item && !this.imageMode && this._syncT <= 0) {
       this._syncT = 0.5;
       const target = this.targetTime();
+      // 아직 아무것도 받지 못했는데 상영 위치가 크게 바뀌었으면(관리자가 찾아감) hls.js 시작 위치도 옮긴다
+      // (readyState 0에서는 아래 위치 맞추기가 동작하지 않고, hls.js는 처음 정한 위치의 조각만 계속 다시 요청함)
+      const h = this.hls;
+      if (h && !s.item.live && v.readyState < 1 && h.levels?.length && Math.abs(h.startPosition - target) > 8) h.startLoad(target);
       if (s.playing) {
         if (v.paused && v.readyState >= 1) v.play().catch(() => this.onAutoplayBlocked?.());
         if (!s.item.live && v.readyState >= 1) {
           const drift = v.currentTime - target;
-          if (Math.abs(drift) > 1.5) { v.currentTime = Math.max(0, target + 0.15); v.playbackRate = 1; }
+          // 찾아가는 중(조각을 기다리는 중)에는 또 찾아가지 않는다. 너무 벌어졌을 때만 다시
+          if (Math.abs(drift) > 1.5) { if (!v.seeking || Math.abs(drift) > 10) this._seek(target + 0.15); }
           else if (Math.abs(drift) > 0.12) v.playbackRate = 1 - Math.max(-0.5, Math.min(0.5, drift)) * 0.2;
           else v.playbackRate = 1;
         }
       } else {
         if (!v.paused) v.pause();
-        if (v.readyState >= 1 && Math.abs(v.currentTime - target) > 0.25) v.currentTime = target;
+        // 멈춰 있는 동안 찾아가던 위치가 다시 바뀌었으면(관리자가 또 찾아감) 새 위치로
+        if (v.readyState >= 1 && Math.abs(v.currentTime - target) > 0.25 && (!v.seeking || Math.abs(target - (this._seekTo ?? target)) > 0.25)) this._seek(target);
       }
     }
     if (s && !s.item && s.prepare) {

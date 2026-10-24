@@ -263,14 +263,16 @@
       <div class="card grid2">
         <div class="field span2"><label>서버 이름 (입장 화면에 표시)</label><input id="cfgName"></div>
         <div class="field"><label>최대 접속 인원</label><input id="cfgMax" type="number" min="1" max="1000"></div>
-        <div class="field"><label>영상 최대 화질 (링크 다운로드 시)</label>
+        <div class="field"><label>영상 최대 화질 (링크 다운로드·실시간 변환 시, 실시간 변환은 최대 1080p)</label>
           <select id="cfgHeight"><option value="720">720p (권장: 접속자 많을 때)</option><option value="1080">1080p</option><option value="1440">1440p</option><option value="2160">4K</option></select></div>
         <div class="field"><label class="check"><input type="checkbox" id="cfgYtSubs"> 링크 영상의 자막 자동으로 받기</label></div>
         <div class="field"><label>미리 받아둘 다음 영상 수</label><input id="cfgPrefetch" type="number" min="0" max="20"></div>
+        <div class="field span2"><label class="check"><input type="checkbox" id="cfgDirectPlay"> 큰 영상도 캐시에 미리 변환하지 않고 원본 파일에서 바로 재생 <span class="muted">(MKV·HEVC·AC3 등 브라우저가 그대로 못 트는 파일은 재생하는 부분만 그때그때 변환합니다. 끄면 예전처럼 캐시에 통째로 변환한 뒤 재생. 바꾸면 이미 준비된 영상도 새 방식으로 다시 준비합니다)</span></label></div>
         <div class="field"><label class="check"><input type="checkbox" id="cfgKeepCache"> 서버를 꺼도 영상 캐시 남기기 <span class="muted">(끄면 서버를 끌 때 내려받은·변환한 영상을 지우고, 다음에 프로그램을 켜거나 서버를 열 때 다시 준비합니다)</span></label></div>
         <div class="field span2"><label>무작위 닉네임에 쓸 캐릭터 이름 (쉼표로 구분)</label><input id="cfgNames"></div>
         <div class="field"><label class="check"><input type="checkbox" id="cfgCustom"> 접속자가 자기 3D 모델을 올려 쓰도록 허용</label></div>
         <div class="field"><label>3D 모델 파일 최대 용량 (MB)</label><input id="cfgCustomMB" type="number" min="1" max="500"></div>
+        <div class="field span2"><label class="check"><input type="checkbox" id="cfgMmdPack"> 기본 캐릭터 대신 직접 넣은 MMD 모델 팩 사용 <span class="muted">(끄면 얼굴 없는 인간형 기본 캐릭터. app/client/assets/models 에 모델 팩이 있을 때만 적용되며, 접속자가 새로고침하면 바뀝니다)</span></label></div>
       </div>
       <div class="card">
         <h2>응원봉 색 (방과후 티타임 5인)</h2>
